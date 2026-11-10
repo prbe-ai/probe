@@ -1,0 +1,49 @@
+{
+  "name": "probe-research-pi",
+  "version": "0.7.3",
+  "description": "pi extension: captures sanitized pi session transcripts for Probe, briefs sessions with the team note, and bridges Probe's read-only MCP server into pi as native tools",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "index.ts"
+    ],
+    "skills": [
+      "skills/probe",
+      "skills/track-work",
+      "skills/visualize-progress",
+      "skills/instrument-code",
+      "skills/audit-team-note",
+      "skills/edit-notes",
+      "skills/notes-audit",
+      "skills/plan-research-review",
+      "skills/write-summary",
+      "skills/overview-visuals",
+      "skills/overview-page",
+      "skills/overview-contract",
+      "skills/overview-charts",
+      "skills/artifact-diagramming",
+      "skills/artifact-design",
+      "skills/write-pane"
+    ],
+    "mcp": "./mcp.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "typebox": "1.3.7"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^1.0.1",
+    "@types/node": "^20",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "brace-expansion": "^5.0.12"
+  }
+}

@@ -1,0 +1,744 @@
+# probe-research-pi
+
+A [pi](https://github.com/earendil-works/pi) extension with four independent
+capabilities: it spawns the `probe-research-tap` daemon to ship sanitized pi
+session transcripts to Probe (the pi equivalent of what
+`probe-research-tap`'s `hooks/session-start.sh` / `hooks/session-end.sh` do
+for Claude Code and Codex), it briefs every session with the team's shared
+note (see "Team note" below — this half works even on an unpaired device,
+since it never talks to the tap package), and it bridges Probe's
+read-only MCP server into pi as native tools (see "Probe MCP read tools"
+below — pi has no MCP client of its own, so this extension is one; see
+"pi-mcp-adapter" for when that bridge stands down in favor of a shared one).
+It also initializes the per-session research-tracking switch from the initial
+working directory and keeps its state visible in Pi's persistent footer.
+Runtime code is loaded directly by pi's own extension loader (jiti), no build
+step; capture and the team note are dependency-free, the MCP bridge is the
+one part of this package with real npm dependencies
+(`@modelcontextprotocol/sdk` and, for schema translation, `typebox` — see
+"Development" for why `npm install` is required for that half).
+
+## Install
+
+pi's only install surface is a `packages` array in `<agent-dir>/settings.json`
+(`~/.pi/agent/settings.json` by default) — read by pi itself at startup, and,
+independently, by pi-mcp-adapter if that's also installed (see
+"pi-mcp-adapter" below). One entry does the whole job: it is how pi loads
+this package's extension code and its three skills (`package.json`'s `"pi":
+{"extensions": [...], "skills": [...]}`), and it is the only thing that makes
+this package's `mcp.json` manifest discoverable to the adapter. There is no
+separate install step for any of the three.
+
+**Keep this user-scope** (`~/.pi/agent/settings.json`), not project-scope
+(`<cwd>/.pi/settings.json`). pi's project-scoped resources are gated by
+project trust, and the default trust policy (`defaultProjectTrust: ask`)
+only prompts in interactive UI — non-interactive invocations (`pi -p`,
+`--mode json`, `--mode rpc`) never show that prompt, and with no saved trust
+decision `resolveProjectTrusted()` (verified against pi 0.86.0's own source,
+`dist/core/project-trust.js`, byte-identical to 0.84.3's) returns `false`, so
+an untrusted project simply never loads its local packages. Those
+non-interactive modes are exactly the
+ones most worth capturing (scripted/agentic pi runs), so a project-scope
+install would silently not run for the sessions that matter most. Route A
+below always writes user scope; if you hand-edit `<cwd>/.pi/settings.json`
+instead of the file Route B shows, you've reintroduced this gate.
+
+### Route A (recommended): `probe wizard --agent pi`
+
+```bash
+probe wizard --agent pi
+```
+
+Writes the entry for you. `agent/src/probe/shared/harness/harnesses/pi/package_entry.py`'s
+`install_package_entry()` resolves this package's directory
+(`PROBE_PI_PACKAGE_ROOT` env, else a bounded checkout walk from wherever the
+`probe` CLI itself is running — see that module's docstring for the full
+two-step resolution order, and why neither resolving is a loud
+`PackageRootError`, never a silent skip), reads `settings.json` (a missing
+file is treated as `{}`), appends the resolved absolute path as a plain
+string to `packages` unless an entry already identifies this package, and
+writes back atomically (tmp file + `os.replace` in the same directory, so a
+crash mid-write can never leave a half-written `settings.json`). Every other
+key in the file, and their order, survives untouched. Re-running it is a
+no-op: identity is checked the way pi itself checks it — an `npm:` source
+matches by name, everything else by resolved absolute path, never a raw
+string compare — so a second wizard run does not append a duplicate entry pi
+would happily load twice.
+
+The same install also retires a legacy symlink install, if one exists and
+points at this package (`pi_config.migrate_legacy_symlink` — see "Legacy"
+below): once the `packages` entry is doing the job, a leftover symlink at
+`~/.pi/agent/extensions/probe-research-pi` would make pi load the extension
+twice. `capabilities.py`'s `installed_plugins()` now reads this same
+`packages` entry to answer "is pi installed", so `probe wizard`/`probe
+doctor` report a pi install truthfully instead of the permanent "absent"
+they used to report before this existed.
+
+Today `probe wizard --agent pi` only offers the capture capability for pi —
+see "Known limitation" below for what that means for the Probe MCP bearer
+token.
+
+### Route B: manual `packages` entry
+
+For anyone not using the `probe` CLI (or pointing at a non-default
+`PI_CODING_AGENT_DIR`), add the package directory to
+`~/.pi/agent/settings.json` yourself:
+
+```json
+{
+  "packages": [
+    "/path/to/research-os/agent/plugins/probe-research-pi"
+  ]
+}
+```
+
+This is exactly the entry Route A writes for you. An entry may be a bare
+string (as above) or `{"source": "..."}` — pi reads both shapes identically
+(`getPackageSourceString`, pi 0.86.0's `dist/core/package-manager.js`,
+byte-identical to 0.84.3's). A relative path resolves against the agent dir,
+not this process's cwd or the
+package root — pi-mcp-adapter's own loader resolves relative `packages`
+sources the same way, against that same `settings.json`'s directory, so a
+relative entry means the same thing to both readers. pi's own `pi install
+/path/to/probe-research-pi` command writes the identical kind of entry, if
+you'd rather let pi's CLI do it than hand-edit JSON.
+
+### Legacy: the `~/.pi/agent/extensions/` symlink
+
+```bash
+mkdir -p ~/.pi/agent/extensions
+ln -s /path/to/research-os/agent/plugins/probe-research-pi \
+      ~/.pi/agent/extensions/probe-research-pi
+```
+
+The pre-`packages`-array install. Still works — pi's auto-discovery scan of
+`extensions/` (`collectAutoExtensionEntries`) finds `index.ts` by convention
+regardless of anything in `settings.json` — but it is now a strictly worse
+option, for two reasons. First, it never reads this package's
+`package.json`, so neither the three skills nor the MCP manifest load through
+it (see "Skills" below for the verified split between pi's two discovery
+mechanisms); pi-mcp-adapter in particular can **never** see `mcp.json`
+through a symlink install, because its loader only reads `packages` entries
+and does not scan `extensions/` at all (see "pi-mcp-adapter" below). Second,
+Route A's wizard install actively retires this symlink the moment it finds
+one pointing at this package (`pi_config.migrate_legacy_symlink`) — leaving
+both in place would make pi load the extension twice. Use this route only if
+you specifically cannot run Route A or B.
+
+`pi install git:github.com/prbe-ai/research-os-agent` writes this same kind of
+`packages` entry, and is what the wizard now writes on any machine without a
+research-os checkout. That repo is the PUBLIC MIRROR — the one Claude and
+Codex already install their plugins from — and the `package.json` rendered to
+its root carries a `"pi"` manifest pointing at
+`plugins/probe-research-pi/`, so pi clones the repo, runs
+`npm install --omit=dev` at the root, and loads this package from there.
+
+There is deliberately no npm publish: the mirror push is already the release
+mechanism for the other two clients, and reusing it means one channel to keep
+in step instead of two. See `pi_config.resolve_install_source`.
+
+## Skills
+
+This package vendors the Probe skills — `probe`, `track-work`,
+`visualize-progress`, `instrument-code` and the rest — copied byte-for-byte
+from this monorepo's canonical `skills/` by `make sync-pi-skills` (run from
+`agent/`; `tests/test_pi_skills_sync.py` fails the build if the copies
+drift). Edit `skills/`, never `plugins/probe-research-pi/skills/` directly.
+
+**Why only some install routes above bring the skills along.** pi has two
+unrelated discovery mechanisms. The legacy symlink into
+`~/.pi/agent/extensions/` (see "Install" → "Legacy" above) goes through pi's
+*auto-discovery* scan of that directory (`collectAutoExtensionEntries` in pi
+0.86.0's `core/package-manager.js`, as in 0.84.3), which finds `index.ts` by
+convention and never reads this package's `package.json` at all. The
+`"pi": {"skills":
+[...]}` manifest is read only by `collectPackageResources` — the code path
+that runs for a directory pi's own package manager has registered as a
+source, i.e. anything in the `packages` array. So Route A and Route B in
+"Install" above (both write a `packages` entry) resolve the extension AND
+all three skills AND the MCP manifest, in lockstep, from the one entry; the
+legacy symlink resolves the extension only. Verified live: with this package
+only symlinked into `extensions/`, pi's own `DefaultResourceLoader` resolves
+the extension but zero skills; with the package additionally registered via
+a `packages` entry, the same loader resolves the extension AND all three
+skills. See `tests/skillsManifest.test.ts`, which asserts both states
+against pi 0.86.0's real, public resource-loading code (not a
+re-implementation of its discovery rules).
+
+### Skills only, no capture: the drop-in skills directory
+
+```bash
+mkdir -p ~/.pi/agent/skills
+for s in probe track-work visualize-progress instrument-code; do
+  ln -s /path/to/research-os/agent/skills/$s ~/.pi/agent/skills/$s
+done
+```
+
+pi auto-discovers `~/.pi/agent/skills/<name>/SKILL.md` every session
+(`collectAutoSkillEntries`, the same auto-discovery family as the extensions
+scan above, just pointed at `skills/` instead) — independent of this
+package, this monorepo, or the capture daemon entirely. Use this route to
+try the skills without also taking on the tap dependency below, or on a
+machine that does not have this repo checked out. It does not track updates
+to the vendored copy the way a `packages` entry does (a `git pull` in this
+repo does not refresh symlink targets that were copied rather than linked),
+and it installs nothing for transcript capture or the MCP bridge.
+
+### A known content gap, not a wiring gap
+
+`track-work`'s description WAS 1,142 characters — over the Agent Skills
+spec's 1,024-character cap that pi's own validator enforces
+(`core/skills.js`, `MAX_DESCRIPTION_LENGTH`). pi does not refuse the skill
+for it: `loadSkillFromFile` still loads it with the full, untruncated
+description, and only appends a `warning` diagnostic
+(`description exceeds 1024 characters (1142)`) — `tests/skillsManifest.test.ts`
+pins this exact diagnostic so a fix or a further drift is caught rather than
+silently absorbed. `track-work`'s description is shared verbatim with Claude
+Code and Codex (`skills/track-work/SKILL.md` is the single canonical copy —
+see the top of this section), so shortening it is a cross-harness content
+decision, not something this package should do unilaterally to satisfy pi's
+cap; flagged here for whoever makes that call.
+
+## Tracking defaults and footer
+
+On every `session_start`, the extension passes Pi's session id and initial cwd
+to Probe's hidden atomic initializer. That command resolves the machine
+default and publishes the existing per-session tracking signal only when it is
+absent. Reloading an extension therefore reads the settled signal instead of
+changing the session because a config file changed later.
+
+The same call returns `retired_config_notice`: the researcher's one line when the
+session started under the retired per-folder config file (removed 2026-11-04),
+shown once as a notice (the CLI marked it given).
+
+Interactive `/probe`, `/skill:probe`, and `$probe` requests (and the legacy
+`track-work` spellings) use
+the existing per-session switch. After the write lands, Pi reads the resulting
+signal back and refreshes the persistent footer as `● tracking` or
+`○ not tracking`; it never guesses the result of a toggle.
+
+If the Probe CLI is missing, times out, or returns an invalid state, startup
+continues and the tracking footer is left absent (or cleared after a switch)
+rather than showing a stale answer. This failure path does not gate transcript
+capture or the MCP bridge.
+
+This controls structured research tracking only. Transcript capture remains a
+separate machine capability with its own credential and killswitches.
+
+## The daemon profile
+
+When `probe wizard` sets Who records to the daemon for pi, the CLI reports
+`"profile": "daemon"` from the same `session initialize` call (re-read on every
+start, resume and `/reload`). The extension then narrows itself to what Claude
+Code's lean `probe-research-daemon` plugin offers:
+
+- the prompt lists only `instrument-code`, `plan-research-review` and the daemon's own `probe`
+  and `visualize-progress` skills (`daemon-skills/<name>`, byte copies of the lean plugin's,
+  added through `resources_discover` and never named in `package.json`);
+- no Probe MCP tools: the bridge stays off and pi-mcp-adapter's Probe tools are
+  deactivated (the daemon reads, through `probe ask`);
+- the agent is told nothing about the daemon; when the daemon stops recording,
+  the researcher gets one pi notification and the footer marks the daemon
+  degraded.
+
+A CLI that sends no `profile` (or one this extension does not know) means the
+agent profile, which is everything else in this README.
+
+In the daemon profile a `tool_call` guard also refuses every `probe` command
+except `ask`, `session status`, `run expect`, `doctor` and the runs' own data
+(`exec`, `run start`/`end`, ...), and every Probe MCP call, with the same
+refusal Claude Code's lean plugin gives.
+
+**The guard asks the Probe service first (both profiles).** A `bash`,
+`powershell`, `write`, `edit` or Probe MCP call goes to the Probe service as
+Claude Code's PreToolUse payload (`hooks.run`), and the pre-tool hooks of the
+Probe plugin folder beside this package (`../probe-research`, or
+`../probe-research-daemon` in the daemon profile) answer, warm, in about 20 ms:
+the same checks Claude Code runs, in the same words. The built-in guard
+(`src/guard.ts`) still runs on every call, and a refusal of its own always
+stands (the Python hooks fail open), so the service can only add refusals.
+When the service gives no clear answer within 300 ms (none running, a CLI from
+before `hooks.run`, a hook that failed), the built-in guard decides alone, as
+before. When the service refuses pi (it takes no work from a process it cannot
+rule out being sandboxed, such as one running with `no_new_privs` on Linux),
+the same pre-tool hooks run here instead, the plugin folder's own
+`hooks/dispatch.sh pre-tool`, within the same 250 ms, and their verdict counts
+as the service's would. A session set to `off` never asks the service. See
+`src/serviceGuard.ts` for the mapping.
+
+**The daemon's questions (both profiles).** When the daemon holds an action
+for the researcher's yes, pi asks it in its own pick-one dialog, word for word,
+at the next prompt or within 2 s, and writes the pick where the daemon reads
+it. Esc asks again at the next prompt. In print or json mode nothing is asked:
+answer with `probe approvals` in a terminal (always the case for a question too
+long for a dialog). The guard refuses any agent tool call that would write
+there itself.
+
+## Prerequisite: `probe-research-tap` must be reachable
+
+This extension does not ship the capture daemon itself — it spawns
+`python3 -m tap watch`, from the separate `probe-research-tap` Python
+package (`agent/plugins/probe-tap/` in this monorepo; standalone,
+pip-installable, zero dependencies). It resolves an interpreter + that
+package in this order:
+
+1. `PROBE_PI_TAP_ROOT` env — point this at a `probe-research-tap` checkout
+   (its `tap/` package importable via `PYTHONPATH`). **The supported
+   override for any install shape outside this monorepo.**
+2. The sibling `probe-research-tap/` directory next to this package. Works
+   inside this monorepo checkout AND in a mirror install: the mirror renders
+   `plugins/probe-research-pi/` and `plugins/probe-tap/` as siblings,
+   so the tap package (with its `tap/__init__.py`) is right where this step
+   looks. It is only absent for an install shape that ships this package
+   alone — see "Known limitation."
+3. No checkout at all: an interpreter with no `PYTHONPATH` override,
+   assuming `probe-research-tap` was separately `pip install`-ed into it.
+
+The interpreter must be Python 3.11 or newer (the tap's own minimum). It is
+the first of these that says so when asked (`python -S -c ...`, once per pi
+process), in the order the tap's `hooks/tap-python.sh` uses: the checkout's
+`.venv/bin/python3`, `python3` (then `python`) on `PATH`, the Probe CLI's
+interpreter (the one the Probe service's `runtime.json` names, else
+`~/.local/share/uv/tools/probe-research/bin/python`), then `python3.14` down
+to `python3.11` on `PATH`. On a Mac the first `python3` is Apple's 3.9, which
+the tap cannot run on.
+
+If no interpreter is new enough, the extension refuses to spawn and says so
+once, on stderr and in its own log, naming the `python3` it found — it will
+not start a daemon that immediately exits — and leaves that in
+`.python-missing` in the tap's state folder, where `probe doctor` shows it.
+
+## Pairing
+
+Capture needs a device token, checked in the same order
+`hooks/session-start.sh` and `tap/config.py`'s `load_token()` use:
+
+1. A paired device token at `~/.pi/agent/state/probe-research-tap/.token`
+   (written by `PROBE_TAP_SOURCE=pi python3 -m tap pair <token>`, using a
+   pairing token minted from the Probe dashboard).
+2. The `PROBE_PI_TAP_TOKEN` env var.
+
+The probe CLI's own config is NOT a source: its `ingest_token` is the capture
+token minted for Claude Code, and the server refuses it on pi's route. Pair pi
+through the Probe wizard (`npx probe-research`), which mints pi its own token.
+
+If none resolve, the extension refuses to spawn a daemon for that session —
+loudly, once, on stderr (never stdout: `--mode json` reserves stdout for
+structured output) — rather than starting one that would 401 on every tick.
+
+## Status
+
+Run the `/probe-status` command inside an interactive or RPC pi session to
+see: whether this device is paired and how, whether the Probe MCP bridge is
+running directly or standing down for pi-mcp-adapter (see "pi-mcp-adapter"
+below), which Python interpreter/tap checkout would be used, and whether a
+daemon is currently capturing the active session — its own watcher, or the
+Probe service, which records a session with no watcher of its own and leaves
+a `.hosted` marker naming itself (trusted only when it is this user's file
+and names this user's running service). (Not verified against
+print/json mode's slash-command handling — for a one-shot headless run,
+check the session_start refusal message on stderr, or `PROBE_TAP_SOURCE=pi
+python3 -m tap status` directly.)
+
+For delivery/outbox detail (bytes shipped, retry state, last-401 halt),
+`/probe-status`'s output points at the fuller existing tool:
+
+```bash
+PROBE_TAP_SOURCE=pi python3 -m tap status
+```
+
+This extension deliberately does not reimplement that reporting — it lives
+against a SQLite file this package has no dependency to read, and
+duplicating `tap/status.py`'s precedence logic a third time is exactly the
+kind of drift its own docstrings warn against.
+
+## Killswitch
+
+Same file, same semantics as Claude Code/Codex:
+
+```bash
+touch ~/.pi/agent/state/probe-research-tap/.disabled
+```
+
+Checked first, before pairing — a session starting while this file exists
+never spawns a daemon, and the daemon itself (`tap watch`) also checks it
+independently if ever started another way.
+
+## Team note
+
+The team note is the lab's shared memory: ONE markdown file per machine,
+`~/.local/state/probe/team-note/probe-team-note.md` by default (under
+`$XDG_STATE_HOME` if that is set), that every agent (Claude Code, Codex, and
+pi) reads from and writes to.
+
+**The Probe service does all of it** (service-only task 16): this extension
+neither syncs nor reads the note. Its forwarded `before_agent_start` comes back
+with the note as a `system_prompt` action (pi gets it injected, never rendered
+into a file the researcher owns), and its `agent_settled` and session events run
+the service's own sync (`notes.sync`). The rules live in the service's copy
+(`probe.shared.harness.harnesses.pi.team_note_prompt`): no Probe managed block in
+pi's `AGENTS.md` (the `--no-agent-rules` opt-out; a damaged block still counts as
+opted in), or a workspace limit hiding team-wide items, means no note. No
+service, no note that turn.
+
+## Probe MCP read tools
+
+Independent of the capture daemon and the team note above — pi has no MCP
+client of its own (verified against pi 0.86.0's own source, as in 0.84.3: no
+MCP file anywhere in the package, no MCP reference in the extension API
+types), so
+this extension acts as one. On `session_start`, it connects to Probe
+Research's read-only MCP server (`https://mcp.research.prbe.ai/mcp` — the
+same server Claude Code and Codex already use), lists its tools, and
+registers each as a native pi tool via `pi.registerTool()` (through the shim,
+see "Updates without `/reload`"), translating each
+tool's JSON Schema `inputSchema` into TypeBox with `Type.Unsafe()` (see
+`src/mcpSchema.ts` for why that — not a hand-written Object/String walker —
+is the correct translation: verified against pi's own dist that `parameters`
+is only ever used as a plain JSON Schema object, never through TypeBox's
+runtime type-checking). Every registered tool name is prefixed
+`probe_mcp_...` so it cannot collide with a pi built-in or another
+extension's tool. This is the fallback path — if pi-mcp-adapter already owns
+this server, this extension stands down instead of connecting a second time;
+see "pi-mcp-adapter" below.
+
+**Two auth paths, same resolution order as `probe-mcp-headers`.** The fast
+path is a Probe MCP bearer token — the same `mcp_token` Claude Code's MCP
+connection already uses, minted on any device that has run the Probe wizard
+(`npx probe-research`). Resolution order mirrors
+`agent/plugins/probe/bin/probe-mcp-headers` exactly: `PROBE_MCP_TOKEN`
+env first, then the probe CLI config file's `mcp_token`, read from BOTH
+shapes (v2 named-contexts, v1 flat) — reading only v1 is the exact bug that
+script's own comments record making the fast path silently return nothing on
+every install the wizard has ever produced. **The write-scoped `ingest_token`
+in the same file is never read** — this surface is read-only. A token is
+re-resolved on every connect and again after a 401/403 from a tool call, so
+a rotated token (or one the wizard wrote after this session started) is
+picked up without restarting, matching Claude Code's behaviour.
+
+If no bearer token exists anywhere, the fallback is the standard OAuth
+authorization-code + PKCE flow via the official `@modelcontextprotocol/sdk`
+client (`StreamableHTTPClientTransport`'s `authProvider` option and
+`client/auth.js`'s `auth()`/`UnauthorizedError` — no protocol is hand-rolled;
+this package implements only the `OAuthClientProvider` storage interface,
+under `~/.pi/agent/state/probe-research-mcp/oauth.json` by default). It is
+**never** attempted automatically — `session_start` only ever tries a bearer
+token or previously-saved OAuth tokens, both non-interactive and bounded, so
+an unpaired device degrades silently instead of stalling the session. Run
+`/probe-mcp-login` to authenticate interactively: it prints an authorization
+URL and prompts for the URL you land on (or just the `code` value) after
+approving — the same paste-back pattern pi's own canonical OAuth example
+(`examples/extensions/custom-provider-gitlab-duo`) uses, deliberately *not* a
+local callback server or a browser launched on your behalf, since neither
+belongs in a coding-agent extension and neither works from a headless/SSH pi
+session anyway. `/probe-mcp-login` also doubles as "reconnect Probe MCP
+tools now" for anyone already paired.
+
+**Degrades, never crashes.** No token, an unreachable server, or a failed
+tool list all leave a working pi session with zero Probe tools and one clear
+message (stderr + the extension log + a UI toast where one exists) — the
+same shape as the unpaired-tap case above. Every network step
+(`connect`, `listTools`, each tool `callTool`) is bounded with its own
+timeout (`src/mcpBridge.ts`'s `McpBridgeTimeouts`), because pi imposes none
+of its own on extension handlers (verified against
+`dist/core/extensions/runner.js`: every handler call is a bare
+`try`/`catch`, no `Promise.race`) — an unreachable server would otherwise
+stall `session_start` indefinitely with nothing to interrupt it.
+
+## pi-mcp-adapter
+
+pi-mcp-adapter is a separate, optional pi package that auto-discovers MCP
+server manifests declared by *other* `packages` entries and connects to them
+itself, instead of each extension running its own client the way "Probe MCP
+read tools" above does. This package ships the manifest it needs to be
+found: `mcp.json` plus `"pi": {"mcp": "./mcp.json"}` in `package.json`. Once
+this package is registered as a `packages` entry (either Install route
+above), the adapter — if also present, now or installed later — discovers
+`mcp.json` with zero further configuration and surfaces the server as
+`probe-research-pi__probe` in its own tool namespace, prefixed and sanitized
+from this package's name (`package-mcp-loader.ts`, their repo). **It does
+not scan `node_modules`, and it does not scan `~/.pi/agent/extensions/`** —
+the `packages` arrays are the whole gate, which is exactly why the legacy
+symlink install (see "Install" → "Legacy" above) can never be discovered
+this way.
+
+**The manifest declares OAuth, and nothing else.** `mcp.json` sets
+`auth: "oauth"` with a `scope`/`clientName` under `oauth` — no `bearerToken`
+and no `!command` fast path. Verified live against production on
+2026-08-27: the server's own discovery metadata (S256 PKCE,
+`token_endpoint_auth_methods: ["none"]`, RFC 7591 dynamic client
+registration, scope `research:read`) is enough for the adapter's built-in
+OAuth flow to complete on its own, with no manual client-registration step
+and no separate secret to configure. A `bearerToken` entry would be more
+convenient when it works, but the adapter's `!command` execution semantics
+make a **failing command stop the connection** rather than fall through to
+OAuth — it is a fast path, not a fallback-safe one. Shipping one in this
+manifest would turn "no token minted for this device yet" into "the adapter
+refuses to connect at all" the first time someone hits it, instead of
+degrading to an interactive OAuth prompt the way this package's own direct
+bridge does. Lazy connection lifecycle (the adapter's default) is correct
+here too: nothing forces a connection before some tool is actually called.
+
+**The stand-down rule.** With both pi-mcp-adapter and this package
+registered, two things would otherwise try to serve the exact same Probe
+tools: the adapter, through the manifest above, and this extension's own
+direct bridge (`session_start`, see "Probe MCP read tools"). `src/adapterHandoff.ts`
+decides which one runs, re-checked fresh on every `session_start` (two local
+file reads, no network) rather than cached once — a `packages` entry can be
+added or removed between sessions, and this has to track that without a
+restart.
+
+The rule is **both-or-neither**, not just "adapter present": the direct
+bridge steps aside only when the merged user *and* project `packages`
+arrays contain **both** pi-mcp-adapter and this package. Adapter present but
+this package installed only through the legacy symlink is deliberately
+**not** enough to stand down — the adapter's loader only reads `packages`
+entries, so it can never see a symlinked package's `mcp.json` at all, and
+standing down there would make Probe's tools vanish outright, which is worse
+than the duplicate-tool registration this whole check exists to prevent.
+
+Detection **fails open**: a missing, unreadable, or malformed `settings.json`
+at either scope is read as "this scope contributes no packages," which can
+only push the decision toward keeping the direct bridge alive, never toward
+silently standing down. Run `/probe-status` to see which mode is active for
+the current session — it prints either `mcp: Probe MCP served via
+pi-mcp-adapter` or `mcp: bridged directly by this extension (see
+/probe-mcp-login)`, so a "where did my Probe tools go" report has a trail to
+follow immediately.
+
+## Config
+
+| Variable | Purpose |
+|---|---|
+| `PROBE_PI_TAP_TOKEN` | Device token override |
+| `PROBE_PI_TAP_PLUGIN_DIR` | State dir override (default `~/.pi/agent/state/probe-research-tap`) |
+| `PROBE_PI_TAP_ROOT` | Path to a `probe-research-tap` checkout (see above) |
+| `PROBE_CONFIG_PATH` | probe CLI config path override (tests/dev) |
+| `PROBE_BASE_URL` | Backend origin override (read by the daemon itself) |
+| `PI_CODING_AGENT_DIR` | pi's OWN global config dir override (default `~/.pi/agent`) — not a probe-specific variable; relocates the team-note document, the MCP OAuth token cache, and, for pi itself, `AGENTS.md`, `settings.json`, and `extensions/` |
+| `PROBE_MCP_TOKEN` | Probe MCP bearer token override — same variable, same precedence, as `probe-mcp-headers` |
+| `PROBE_MCP_URL` | Probe MCP server URL override (default `https://mcp.research.prbe.ai/mcp`; tests/dev only) |
+
+`PROBE_PI_PACKAGE_ROOT` is a related override, but it belongs to the `probe`
+CLI's wizard (`agent/src/probe/shared/harness/harnesses/pi/package_source.py`), not to this extension's
+own runtime — see "Install" → "Route A" above.
+
+## What this extension actually does
+
+On `session_start` (every reason: `startup`, `new`, `resume`, `fork`,
+`reload`), independent of everything below: attempt the Probe MCP bridge
+(bearer token, else previously-saved OAuth tokens, else skip with no network
+call — see "Probe MCP read tools" above) and register whatever tools that
+connection yields, unless pi-mcp-adapter already owns the server (see
+"pi-mcp-adapter" above), in which case this step logs the hand-off and does
+nothing further. Runs before, and regardless of the outcome of, every step
+that follows — it needs no transcript file, no pairing, and is not gated by
+the killswitch (a different credential, `mcp_token`, never the tap's
+ingest/device token).
+
+Then, still inside `session_start`:
+
+1. Resolve the current session's id and JSONL path
+   (`ctx.sessionManager.getSessionId()` / `.getSessionFile()`) — skip if the
+   session has no file yet (in-memory, nothing to tail).
+2. Best-effort prune `.shutdown` sentinels in `/tmp` older than two days
+   (session-end.sh deliberately never deletes its own; see `daemon.ts`) —
+   the same hygiene Claude Code's hook does, needed here too for a pi-only
+   install with no Claude Code hook to do it for free.
+3. Refuse silently if the `.disabled` killswitch is present.
+4. Skip if this pi process already spawned a daemon for this session id
+   (fast, in-process: the shim's shared state, which survives a session
+   switch and a version switch but not `/reload`, where pi evaluates the
+   extension afresh) — and skip again if a *different* process already has a live
+   watcher for it (a pidfile + liveness check, same convention Claude Code's
+   hook uses: `/tmp/probe-research-tap-watcher-<session_id>.{pid,shutdown}`,
+   the **same prefix Claude Code uses**, not a pi-specific one — see
+   `src/core/paths.ts` for why that's load-bearing).
+5. Refuse loudly (stderr + log + UI toast where a UI exists), once, if
+   unpaired or if no Python interpreter can be found.
+6. Otherwise spawn a detached crash-recovery wrapper
+   (`/bin/sh`, POSIX, ported from `hooks/session-start.sh`'s bash wrapper)
+   that runs `python3 -m tap watch --session-id <id> --cwd <cwd> --transcript
+   <path>` with `PROBE_TAP_SOURCE=pi` set, and `.unref()`s it — this returns
+   immediately, it does not wait for the daemon.
+
+On `session_shutdown`: touches the shutdown sentinel and signals the
+wrapper's process group (`stopDaemon`, the `session-end.sh` analog), and
+best-effort closes any live Probe MCP connection, for every reason
+**except** `reload`. For a session the Probe service records (its `.hosted`
+marker), a `quit` also asks the service to finish it now and waits up to 3 s
+for its last upload (`python -m tap finish --session-id <id> --wait 3`), and
+every reason but `reload` then removes the marker, so a resume of that
+session asks the service to record it again (`finishHostedSession`). Not on
+`reload` — a reload tears down and rebuilds the extension runtime
+for the *same* session, which fires `session_start` again immediately after;
+stopping the daemon (or dropping the MCP connection) there would spuriously
+FINALIZE a session that isn't actually ending. A `session_start` that finds
+its session's Probe MCP connection already open (a version switch, or
+`session_start` firing again) offers its tool list again with no new network
+call. Under pi 1.0 a `/reload` evaluates the extension afresh (jiti with
+`moduleCache: false`, and the reload clears pi's extension cache), so the
+reloaded extension starts with empty state and connects again
+(`tests/shimPiLoader.test.ts` proves the fresh evaluation).
+
+## Updates without `/reload`: the shim
+
+pi binds an extension's handlers, commands and tools when it loads it, at
+start and at `/reload`. So that an open pi session takes a new Probe version at
+its next turn, this package is split in two:
+
+- **The shim** (`index.ts` + `src/shim.ts`): loaded once per pi process and
+  never changed under it. It is the only code that calls pi's registration API
+  (`on`, `registerCommand`, `registerTool`, `setActiveTools`): it registers the
+  eight events (`session_start`, `session_shutdown`, `resources_discover`,
+  `before_agent_start`, `tool_call`, `agent_settled`, `session_compact`,
+  `input`), both commands and every tool once, each forwarding by name to the
+  active implementation. `SHIM_API = 1`.
+- **The implementation** (`src/impl.ts`, the rest of `src/`): `prepare(env)`
+  builds a candidate with no side effect; its `declarations` name its event
+  handlers, commands and tools (the Probe MCP tools are declarations built over
+  the open connection); `activate()` / `deactivate()` start and stop its reads
+  poller; `status()` says whether the Probe service records the session. It
+  declares `REQUIRES_SHIM_API`, `STATE_SCHEMA`, `MIGRATES_FROM` and
+  `RESOURCES_FINGERPRINT` (`src/resources.ts`).
+
+The implementation gets two roots: `installRoot`, where pi loaded `index.ts`
+from (the pi clone) and so the package's identity in pi's settings (the
+`probeTracking: false` opt-out, pi-mcp-adapter's hand-off), and `resourceRoot`,
+where its own files are (skills, and the sibling `probe-research-tap` and
+plugin folders the tap runtime and the guard use).
+
+**Pins.** After `pi update`, the Probe CLI copies the clone's layout into
+`<probe state dir>/pi/pins/<version>-<fingerprint>/` (`plugins/probe-research-pi`,
+the sibling plugins, `node_modules`, `package.json`), marks it complete with a
+`.pinned` file, and replaces `<probe state dir>/pi/current` atomically with
+`{"pin": "<folder>", "version": "<version>"}`. The shim stats `current` on every
+event (re-reading it only when the file changed) and switches only at a turn
+boundary, `session_start` or `before_agent_start`, never mid tool call:
+
+1. import `pins/<pin>/plugins/probe-research-pi/src/impl.ts`;
+2. check `REQUIRES_SHIM_API` and that the running state schema is the
+   version's own or in its `MIGRATES_FROM`;
+3. `prepare` on a copy of the shared state;
+4. `deactivate` the running version, register the declaration difference
+   (new tools and commands, re-register changed ones, take removed tools out of
+   pi's active set), `activate` the new one, commit its state.
+
+A failure before step 4 changes nothing; a failure in it re-applies the old
+declarations and activates the old version again on its untouched state.
+Either way the pin is recorded as bad and not tried again by that process,
+and the extension log says why. A version that needs a newer shim keeps the
+running one and says once "Probe updated; run /reload in pi to apply". A
+version whose skills differ from what pi loaded still switches its code, but
+pi shows the new skills only after `/reload` (or in the next session).
+
+**Shared state.** What outlives a version (`{schema, session, transports}`)
+belongs to the shim: the session's caches, the pending-capture map, the
+spawned session ids, the held-question memory, the reads poller, and the open
+Probe MCP connections, as data only. A new version is handed a copy of the
+two records whose values are the same containers, so a replaced version's
+in-flight work still lands where the new one reads it.
+
+**The live record.** Each pi process keeps `<probe state dir>/pi/live/<pid>.json`
+current (`LiveRecord` in `src/shim.ts`: `shim_api`, `state_schema`, `pin`,
+`fallback_pin`, `bad_pins`, `recorded`, `skills_reload_needed`,
+`shim_reload_needed`, `version`, `started`, `updated`) and deletes it when pi
+quits. The CLI reads it to say "no restart needed" only when that is true, and
+never prunes a pin a live record names.
+
+## Known limitation
+
+**The `probe-research-tap` location is solved for the mirror install, not in
+general.** A mirror install (`git:github.com/prbe-ai/research-os-agent`) clones the
+whole repo, and the mirror renders `plugins/probe-tap/` as a sibling
+of this package — so step 2 resolves there the same way it does inside this
+monorepo, which is what closed the old "no packaging step ships a Python
+package alongside a pi extension" gap. It is closed by the SHAPE of the
+channel, not by a packaging step: any install that ships this package alone
+still has only step 3 (a separate `pip install`) or `PROBE_PI_TAP_ROOT`,
+which remains the documented override for every other install shape.
+
+**The wizard installs the package now; it does not fully pair the MCP bridge
+yet.** `probe wizard --agent pi` installs the extension, the three skills,
+and the MCP manifest together through the `packages`-entry mechanism (see
+"Install" above), retires a legacy symlink pointing at this package
+(`pi_config.migrate_legacy_symlink`), and requests/stores a capture device
+credential the same way it does for Claude Code and Codex. What it does not
+yet do: today `probe wizard --agent pi` only offers the **capture**
+capability for pi — `setup.py`'s `restart_notice` says so explicitly ("pi is
+capture-only through this wizard") — and the **tracking** capability is what
+requests the `mcp` grant that mints a Probe MCP bearer token
+(`CAPABILITY_GRANTS`). So on a device that has never run the wizard for
+Claude Code or Codex first, `/probe-mcp-login`'s interactive
+OAuth flow (see "Probe MCP read tools" and "pi-mcp-adapter" above) remains
+the only way to get Probe's read tools into pi.
+
+**`/probe-mcp-login`'s OAuth fallback is interactive-only by design, not
+merely by omission.** It asks the researcher to paste back the URL they land
+on rather than running a local callback server or launching a browser —
+both are real infrastructure this package deliberately does not take on (see
+"Probe MCP read tools" above), and a browser launch would silently do
+nothing useful on the headless/SSH/container pi sessions this project mostly
+cares about anyway. The practical implication: on a device with no bearer
+token and no interactive pi session available, there is currently no way to
+authorize Probe's MCP tools for pi at all — other than installing
+pi-mcp-adapter and letting *its* OAuth flow run instead (see
+"pi-mcp-adapter" above, which does not have this restriction). This is
+expected to be rare — any device already set up with the wizard for *any*
+agent already has the bearer token this bridge prefers —
+but it is a real, narrower gap than the tap's, flagged here rather than
+papered over.
+
+## Development
+
+```bash
+npm install
+npm run typecheck
+npm test
+```
+
+**Layout.** `src/core/` holds the modules that re-state Probe's Python
+behaviour (paths, the capture daemon's spawn, the Probe service's session marker, the switch, the tracking state,
+pairing, the MCP token, the daemon's messages, reads and questions, the team
+note's read and sync, the `probe` command parse) and import nothing from pi.
+`src/` holds the pi glue: the shim (`shim.ts`, with `index.ts`), the
+implementation (`impl.ts`, `extension.ts`), the MCP bridge, pi-mcp-adapter's
+hand-off, the daemon profile, the guard and the prompt text. See "Updates
+without `/reload`" above for which half may change under a running pi. Each copied
+constant in `src/core/` is pinned to its Python original by a test in
+`agent/tests/` (`test_pi_*_parity.py`, `test_companion_pi_parity.py`,
+`test_reads_hook.py`, `test_watcher_prefix_parity.py`).
+
+`tests/skillsManifest.test.ts` additionally exercises pi's own, real
+`DefaultResourceLoader`/`SettingsManager` (from the
+`@earendil-works/pi-coding-agent` devDependency) against a scratch
+`~/.pi/agent` — it is the test that actually proves the "pi.skills" manifest
+resolves, rather than asserting the manifest's shape and trusting pi to
+agree with it.
+
+`node:child_process`'s `spawn` is mocked in tests — no test ever launches a
+real daemon. Pairing/killswitch tests use real temporary files via
+`PROBE_PI_TAP_PLUGIN_DIR`/`PROBE_CONFIG_PATH` overrides, never the real
+`~/.pi` state on the machine running the suite.
+
+`tests/mcpBridge.test.ts` never constructs a real `StreamableHTTPClientTransport`
+or reaches the network either — it exercises `connectMcp()`,
+`mcpToolDeclarations()` and `interactiveOAuthConnect()` entirely against a fake `McpConnector`
+(`src/mcpBridge.ts`'s own injectable seam). `tests/mcpAuth.test.ts` and
+`tests/extension.test.ts` isolate `PROBE_MCP_TOKEN`/`PROBE_CONFIG_PATH` for
+the same reason `PROBE_PI_TAP_TOKEN` is isolated: this dev machine has a real
+paired `probe` install, and an un-isolated env var would make these tests
+attempt a real connection to the real MCP server.
+
+`tests/shim.test.ts` drives the shim with fake implementations (forwarding,
+switching only at a turn boundary, rollback, bad pins, the state schema, the
+live record); `tests/shimRealImpl.test.ts` runs the real implementation under
+it, including a copy of this package loaded from a pin folder;
+`tests/shimPiLoader.test.ts` runs it inside real pi (its loader, runner and
+tool registry). Every wiring test in `tests/extension.test.ts` goes through
+the shim too (`tests/shimHarness.ts`).
+
+`tests/adapterHandoff.test.ts` covers D6's stand-down decision against real
+temporary `settings.json` files at both scopes — including malformed JSON, a
+non-object root, and a non-list `packages` key — never the real `~/.pi`
+state on the machine running the suite.

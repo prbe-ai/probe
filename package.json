@@ -1,0 +1,36 @@
+{
+  "name": "probe-research-pi",
+  "version": "0.0.0",
+  "description": "pi package for Probe, loaded from the public mirror repo's root. Named probe-research-pi (not research-os-agent) so pi-mcp-adapter's \"<package>__<server>\" tool prefix stays probe-research-pi__probe.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "plugins/probe-research-pi/index.ts"
+    ],
+    "skills": [
+      "plugins/probe-research-pi/skills/probe",
+      "plugins/probe-research-pi/skills/track-work",
+      "plugins/probe-research-pi/skills/visualize-progress",
+      "plugins/probe-research-pi/skills/instrument-code",
+      "plugins/probe-research-pi/skills/audit-team-note",
+      "plugins/probe-research-pi/skills/edit-notes",
+      "plugins/probe-research-pi/skills/notes-audit",
+      "plugins/probe-research-pi/skills/plan-research-review",
+      "plugins/probe-research-pi/skills/write-summary",
+      "plugins/probe-research-pi/skills/overview-visuals",
+      "plugins/probe-research-pi/skills/overview-page",
+      "plugins/probe-research-pi/skills/overview-contract",
+      "plugins/probe-research-pi/skills/overview-charts",
+      "plugins/probe-research-pi/skills/artifact-diagramming",
+      "plugins/probe-research-pi/skills/artifact-design",
+      "plugins/probe-research-pi/skills/write-pane"
+    ],
+    "mcp": "./plugins/probe-research-pi/mcp.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "typebox": "1.3.7"
+  }
+}

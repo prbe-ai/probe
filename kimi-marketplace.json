@@ -1,0 +1,37 @@
+{
+  "version": "1",
+  "plugins": [
+    {
+      "id": "probe",
+      "name": "probe",
+      "displayName": "Probe",
+      "type": "plugin",
+      "source": "./plugins/probe",
+      "description": "Experiment-tracking skills wired to the Probe MCP server; writes go through the `probe` CLI."
+    },
+    {
+      "id": "probe-daemon",
+      "name": "probe-daemon",
+      "displayName": "Probe (daemon profile)",
+      "type": "plugin",
+      "source": "./plugins/probe-daemon",
+      "description": "The daemon profile (installed by `probe wizard` in place of probe): the Probe daemon records and reads for your coding agent."
+    },
+    {
+      "id": "probe-tap",
+      "name": "probe-tap",
+      "displayName": "Probe transcript capture",
+      "type": "plugin",
+      "source": "./plugins/probe-tap",
+      "description": "Ships client-sanitized per-session transcripts to Probe with source-bound device authentication."
+    },
+    {
+      "id": "probe-hooks",
+      "name": "probe-hooks",
+      "displayName": "Probe hooks",
+      "type": "plugin",
+      "source": "./plugins/probe-hooks",
+      "description": "Probe's hook proxy, installed by `probe wizard`: hands each hook event to the Probe service on this machine."
+    }
+  ]
+}

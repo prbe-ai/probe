@@ -1,0 +1,80 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; ROOT=\"${ROOT%/}\"; if [ ! -x \"$ROOT/hooks/dispatch.sh\" ] && [ -n \"${PLUGIN_ROOT:-}\" ]; then ROOT=\"$(ls -dt \"${ROOT%/*}\"/[0-9]*.[0-9]*/.codex-plugin/plugin.json 2>/dev/null | head -1)\"; ROOT=\"${ROOT%/.codex-plugin/plugin.json}\"; [ -n \"$ROOT\" ] && export PLUGIN_ROOT=\"$ROOT\"; fi; [ -x \"$ROOT/hooks/dispatch.sh\" ] || exit 0; exec \"$ROOT/hooks/dispatch.sh\" prompt'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; ROOT=\"${ROOT%/}\"; if [ ! -x \"$ROOT/hooks/dispatch.sh\" ] && [ -n \"${PLUGIN_ROOT:-}\" ]; then ROOT=\"$(ls -dt \"${ROOT%/*}\"/[0-9]*.[0-9]*/.codex-plugin/plugin.json 2>/dev/null | head -1)\"; ROOT=\"${ROOT%/.codex-plugin/plugin.json}\"; [ -n \"$ROOT\" ] && export PLUGIN_ROOT=\"$ROOT\"; fi; [ -x \"$ROOT/hooks/dispatch.sh\" ] || exit 0; exec \"$ROOT/hooks/dispatch.sh\" session-start'"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; ROOT=\"${ROOT%/}\"; if [ ! -x \"$ROOT/hooks/dispatch.sh\" ] && [ -n \"${PLUGIN_ROOT:-}\" ]; then ROOT=\"$(ls -dt \"${ROOT%/*}\"/[0-9]*.[0-9]*/.codex-plugin/plugin.json 2>/dev/null | head -1)\"; ROOT=\"${ROOT%/.codex-plugin/plugin.json}\"; [ -n \"$ROOT\" ] && export PLUGIN_ROOT=\"$ROOT\"; fi; [ -x \"$ROOT/hooks/dispatch.sh\" ] || exit 0; exec \"$ROOT/hooks/dispatch.sh\" pre-compact'",
+            "timeout": 11
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; ROOT=\"${ROOT%/}\"; if [ ! -x \"$ROOT/hooks/dispatch.sh\" ] && [ -n \"${PLUGIN_ROOT:-}\" ]; then ROOT=\"$(ls -dt \"${ROOT%/*}\"/[0-9]*.[0-9]*/.codex-plugin/plugin.json 2>/dev/null | head -1)\"; ROOT=\"${ROOT%/.codex-plugin/plugin.json}\"; [ -n \"$ROOT\" ] && export PLUGIN_ROOT=\"$ROOT\"; fi; [ -x \"$ROOT/hooks/dispatch.sh\" ] || exit 0; exec \"$ROOT/hooks/dispatch.sh\" pre-tool'",
+            "timeout": 6
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; ROOT=\"${ROOT%/}\"; if [ ! -x \"$ROOT/hooks/dispatch.sh\" ] && [ -n \"${PLUGIN_ROOT:-}\" ]; then ROOT=\"$(ls -dt \"${ROOT%/*}\"/[0-9]*.[0-9]*/.codex-plugin/plugin.json 2>/dev/null | head -1)\"; ROOT=\"${ROOT%/.codex-plugin/plugin.json}\"; [ -n \"$ROOT\" ] && export PLUGIN_ROOT=\"$ROOT\"; fi; [ -x \"$ROOT/hooks/dispatch.sh\" ] || exit 0; exec \"$ROOT/hooks/dispatch.sh\" post-tool'",
+            "timeout": 6
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; ROOT=\"${ROOT%/}\"; if [ ! -x \"$ROOT/hooks/dispatch.sh\" ] && [ -n \"${PLUGIN_ROOT:-}\" ]; then ROOT=\"$(ls -dt \"${ROOT%/*}\"/[0-9]*.[0-9]*/.codex-plugin/plugin.json 2>/dev/null | head -1)\"; ROOT=\"${ROOT%/.codex-plugin/plugin.json}\"; [ -n \"$ROOT\" ] && export PLUGIN_ROOT=\"$ROOT\"; fi; [ -x \"$ROOT/hooks/dispatch.sh\" ] || exit 0; exec \"$ROOT/hooks/dispatch.sh\" session-end'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; ROOT=\"${ROOT%/}\"; if [ ! -x \"$ROOT/hooks/dispatch.sh\" ] && [ -n \"${PLUGIN_ROOT:-}\" ]; then ROOT=\"$(ls -dt \"${ROOT%/*}\"/[0-9]*.[0-9]*/.codex-plugin/plugin.json 2>/dev/null | head -1)\"; ROOT=\"${ROOT%/.codex-plugin/plugin.json}\"; [ -n \"$ROOT\" ] && export PLUGIN_ROOT=\"$ROOT\"; fi; [ -x \"$ROOT/hooks/dispatch.sh\" ] || exit 0; exec \"$ROOT/hooks/dispatch.sh\" stop'",
+            "timeout": 16
+          }
+        ]
+      }
+    ]
+  }
+}

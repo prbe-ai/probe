@@ -1,0 +1,45 @@
+{
+  "name": "probe",
+  "version": "0.264.0",
+  "description": "Probe tracking, reproducibility, and status skills for the team's ML work, with a read-only OAuth MCP connection.",
+  "author": {
+    "name": "Probe",
+    "email": "team@prbe.ai",
+    "url": "https://github.com/prbe-ai"
+  },
+  "homepage": "https://github.com/prbe-ai/probe",
+  "repository": "https://github.com/prbe-ai/probe",
+  "license": "MIT",
+  "keywords": [
+    "mlops",
+    "experiment-tracking",
+    "research",
+    "mcp"
+  ],
+  "skills": "./agent-skills/",
+  "mcpServers": {
+    "probe": {
+      "url": "https://mcp.research.prbe.ai/mcp",
+      "auth": "oauth",
+      "required": false
+    }
+  },
+  "interface": {
+    "displayName": "Probe",
+    "shortDescription": "Track and query agentic research runs",
+    "longDescription": "Open, track, snapshot, verify, and close research runs, then render the research status with Probe skills and a read-only OAuth MCP connection.",
+    "developerName": "Probe",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Skills",
+      "Read-only MCP"
+    ],
+    "websiteURL": "https://research.prbe.ai",
+    "defaultPrompt": [
+      "Start and track this research run.",
+      "Check the state of my current experiment.",
+      "Verify and close this research run."
+    ]
+  },
+  "longDescription": "Track the team's ML work end to end -- register it, route files to artifacts, capture metrics and snapshots, verify and close runs -- and render the research status, with Probe skills and a read-only OAuth MCP connection."
+}

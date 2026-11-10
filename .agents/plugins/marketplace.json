@@ -1,0 +1,56 @@
+{
+  "name": "probe",
+  "interface": {
+    "displayName": "Probe"
+  },
+  "plugins": [
+    {
+      "name": "probe",
+      "source": {
+        "source": "local",
+        "path": "./plugins/probe"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "probe-daemon",
+      "source": {
+        "source": "local",
+        "path": "./plugins/probe-daemon"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "probe-tap",
+      "source": {
+        "source": "local",
+        "path": "./plugins/probe-tap"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "probe-hooks",
+      "source": {
+        "source": "local",
+        "path": "./plugins/probe-hooks"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

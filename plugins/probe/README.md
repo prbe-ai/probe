@@ -1,0 +1,156 @@
+# probe-research plugin
+
+Consolidates the Probe research-tracking **skills** + the read-only **MCP
+server** into one Claude Code or Codex plugin. Reads come from the MCP server; writes go
+through the `probe` CLI.
+
+## Two client surfaces
+
+Probe tracks the team's ML work — experiments and training runs, but also surveys, design decisions and data processing, with a short note when setup such as provisioning trips you up — through two separate surfaces over the same backend, for two different workflows:
+
+- **`probe` — SDK + CLI (non-agent).** A Python library (`import probe`) and the `probe` command-line tool for integrating with existing setups and manual experimentation. Drop it into a training script or pipeline to record runs, metrics, spans, and artifacts. No agent required.
+- **`probe-research` — plugin: skills + MCP (agent-centric).** Installed into Claude Code or Codex. Its skills teach the agent the tracking workflow, its read-only MCP server lets the agent query research state, and writes flow through the `probe` CLI. This is the surface for agent-driven research loops such as Anthrogen.
+
+Same backend, two entry points: humans-in-code reach for the SDK/CLI; agents-in-the-loop use the plugin.
+
+## Install
+
+### Codex
+
+```bash
+codex plugin marketplace add prbe-ai/probe
+codex plugin add probe@probe
+codex mcp login probe
+```
+
+Start a new Codex thread after installation. Codex uses its native OAuth flow for the
+hosted MCP server; no token helper or shell-profile credential is needed.
+
+### Claude Code
+
+```bash
+claude plugin marketplace add prbe-ai/probe
+claude plugin install probe@probe
+/probe-setup
+```
+
+`/probe-setup` runs the Probe wizard (`npx probe-research`), which installs the `probe`
+CLI, signs you in (write token), and stores a separate read-only token for the MCP. (Once the
+plugin is added to the central prbe-ai marketplace, the install becomes `probe-research@prbe-ai`.)
+
+## What's inside
+
+- **Skills:** `probe` (the switch: full / read-only / off), `track-work` (everything recorded
+  while it is on — registering work, files to artifacts, metrics, notes,
+  snapshot inputs), and `visualize-progress` (render the state and the
+  research arc in-session). Claude Code and Codex load this same directory.
+- **Requires Claude Code ≥ 2.1.195.** The MCP passes its credential through a headers
+  helper addressed as `${CLAUDE_PLUGIN_ROOT}/bin/probe-mcp-headers`; that placeholder is
+  only interpolated from 2.1.195 on. Older builds pass it through literally, the helper
+  never runs, and the server fails to connect with no clue as to why — there is no
+  manifest field to declare this, so `claude --version` is the check. (Live rotation
+  without a restart additionally wants ≥ 2.1.193, which is implied by the above.)
+- **MCP server** (`.mcp.json`): defaults to the hosted endpoint
+  `https://mcp.research.prbe.ai/mcp` (read-only). `bin/probe-mcp-headers` supplies the
+  Authorization header at connect time from the `mcp_token` the Probe wizard stores
+  (Claude Code strips an exported `PROBE_MCP_TOKEN` from the helper), so no shell
+  profile is involved and a dock-launched Claude Code works. With no token it sends a
+  placeholder the server refuses: Probe "fails to connect" until the wizard runs,
+  instead of Claude Code locking it out for 15 minutes behind "Needs authentication".
+  Self-host: point it at a local `probe-research-mcp` (see `deploy/mcp/`).
+- **Command:** `/probe-setup`.
+- **Hooks** (`hooks/`): a SessionStart version nudge, and session-funnel
+  telemetry (`telemetry.py`) that reports which step of the tracking workflow
+  actually happened — session started, MCP used, tracking skill invoked,
+  `probe` CLI write ran — as metadata-only PostHog events (ids, versions,
+  whitelisted names; never prompts, commands, paths or file contents).
+  Observability only: hooks never block, the sender runs detached with a 3s
+  timeout, and every failure is silent. Disable entirely with
+  `PROBE_TELEMETRY=off`; a non-hosted `base_url` (self-host) also disables it.
+  The shared contract (key, killswitch, hosted gate, identity, batch shape)
+  lives in `hooks/_telemetry_core.py` — a vendored copy of the CLI's
+  `src/probe/analytics/core.py`, refreshed by `make sync-telemetry-core`
+  and byte-parity-tested, so plugin events stay joinable with the CLI's
+  `wizard.*`/`backfill.*` install funnel.
+
+- **Tracking-off contract** (`hooks/version_check.py`, `hooks/tracking_guard.py`):
+  the researcher's `probe session untrack` declaration is a file, so hooks can
+  own it end to end. The FLIP is deterministic: invoking
+  `/probe off` (or `read`, `on`, or bare to toggle `on` <-> `read`) writes the session's
+  signal from the PostToolUse hook itself, so the declaration lands even if
+  the model never runs the CLI the skill instructs (the CLI call stays in the
+  skill — idempotent, and it prints the confirmation). The file then carries
+  the declaration across the one boundary prose cannot survive — a rebuilt
+  context: on a post-compaction or resumed SessionStart of an untracked
+  session, the reconcile-Probe nudge is replaced by one line restating the off
+  contract (record nothing, raise nothing, `/probe on`
+  re-enables). And when a Bash command still WRITES research content through
+  the probe CLI in such a session, the same hook hands the model the contract
+  as additionalContext. Warn, never gate: hooks own the fact (the declaration
+  and its recording), the model owns the behaviour, and nothing here can deny
+  a tool call or block a session. Ambiguity leans toward today's behaviour —
+  an absent or unreadable signal reads as tracking on, `status` flips nothing,
+  a bare invocation on `track-work` moves the switch only in a shape that is PROOF OF A
+  PERSON — a typed line or Claude Code's expansion of one, never a tool call
+  or a Codex activation block, either of which the model can produce and both
+  of which are how it reads the manual (the legacy toggle slugs, having no
+  manual, keep their bare flip on every shape) — and the write-parse prefers
+  false negatives (a missed warning) over false positives (a warning on
+  `probe run show`, which teaches the model the layer cries wolf).
+
+- **Status line** (`hooks/statusline.py`, `hooks/statusline_refresh.py`):
+  an opt-in segment under Claude Code's input box saying whether this session's
+  work is landing in Probe, and where. The Probe wizard's Install turns it on and its
+  Uninstall removes it (`npx probe-research`); set `PROBE_STATUSLINE=off` to mute the refresh.
+
+  | State | The line |
+  |---|---|
+  | on, the daemon records | `● on (daemon) \| BIRD SFT Fine Tuning` (green dot) |
+  | on, the agent records | `● on (inline) \| BIRD SFT Fine Tuning` (green dot) |
+  | read | `● read (daemon) \| BIRD SFT Fine Tuning` (yellow dot) |
+  | off | `● off` alone (red dot) |
+  | Probe not set up | nothing |
+  | a problem | `… \| BIRD SFT Fine Tuning \| session transcript not recorded` (the note in yellow) |
+  | Probe itself broken | `● Probe service down`, `● Probe status unavailable` or `● signed out of Probe` (red dot) |
+
+  In auto mode the words are as above. A chat you set yourself (manual mode, or `/probe` in an auto chat) says so
+  inside the parentheses: `● on (daemon, manual)`, `● off (manual)`.
+
+  The title is the project's name (its slug until a name is known); with none the last divider goes too.
+  One note at most, most serious first. The line never carries a command; this is what to do:
+
+  | Note | What to do |
+  |---|---|
+  | `session transcript not recorded` | `probe statusline show` names the reason and its fix (often `probe wizard`) |
+  | `daemon not recording` | `probe doctor`; a missing daemon key: allow the daemon in `probe wizard` |
+  | `runs only`, `new chats off`, … | the agent turned this down; change it back in the app, the wizard or `/probe` |
+  | `transcripts off` | chosen; `probe capture on` turns them back on |
+  | `service down`, `status unavailable` | `probe doctor`; `probe statusline show` says what the line saw |
+
+  `probe statusline show [--session <id>] [--agent kimi_code|cursor_agent] [--json]` prints the line the service
+  draws for a session, why a hidden line is hidden, and every note with its reason and fix.
+
+  `statusLine` is a single global slot in the user's settings and there is no
+  plugin manifest field for it, so the installer CHAINS: it keeps whatever was
+  already configured, feeds the payload to both sides, and restores the
+  predecessor exactly on uninstall. The refresh hook caches
+  `GET /v1/sessions/{id}/work` — the server's own answer, which covers work
+  created through the SDK, the CLI or the hosted MCP alike — so the renderer
+  needs no network and no credential and finishes in ~26ms.
+  `hooks/_session_marker.py` is a vendored copy of
+  `src/probe/sdk/session_marker.py` (`make sync-session-marker`, byte-parity
+  tested), for the same reason `_telemetry_core.py` is one.
+
+  **Codex gets a notice instead of a segment.** Codex has a status line, but it
+  is a picker over BUILT-IN items (`/statusline`; `tui.status_line` is a sequence
+  and an unrecognised entry is ignored, not executed) — there is no command hook
+  for a plugin to render into. So `hooks/statusline_notify.py` emits the same
+  information as a message when it CHANGES (`Stop` hook, ~4 lines a session), and
+  the wizard's status-line setting turns that on when run under Codex. `hooks/routes.json` (what the
+  frozen `hooks/hooks.json` dispatcher runs) is shared by both flavours, so the refresh hook gates on whether the status line was ever
+  installed: without that it is one `stat` and a return, and it never reaches the
+  network for a user who did not opt in.
+
+Skills here are copies of the repo's canonical `skills/` (kept in sync with
+`make sync-plugin-skills`). The two agent-specific manifests are thin packaging
+adapters around this one implementation.

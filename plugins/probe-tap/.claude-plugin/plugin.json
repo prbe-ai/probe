@@ -1,0 +1,5 @@
+{
+  "name": "probe-tap",
+  "description": "Ships sanitized per-session Claude Code or Codex transcripts to your Probe knowledgebase",
+  "version": "0.10.74"
+}

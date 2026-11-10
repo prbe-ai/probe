@@ -1,0 +1,17 @@
+{
+  "name": "probe-daemon",
+  "version": "0.264.0",
+  "description": "Probe, daemon profile: the Probe daemon records and reads the team's work for this agent. Installs instrument-code (the SDK inside a training or eval script), plan-research-review (plan research before code), visualize-progress (where the work stands, from the daemon), the daemon's messages and questions, and the guard; no MCP.",
+  "author": {
+    "name": "Probe",
+    "email": "team@prbe.ai"
+  },
+  "homepage": "https://github.com/prbe-ai/probe",
+  "keywords": [
+    "mlops",
+    "experiment-tracking",
+    "reinforcement-learning",
+    "probe-research"
+  ],
+  "hooks": "./hooks/claude-reads.json"
+}

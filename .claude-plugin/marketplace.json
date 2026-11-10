@@ -1,0 +1,33 @@
+{
+  "name": "probe",
+  "owner": {
+    "name": "Probe",
+    "url": "https://github.com/prbe-ai"
+  },
+  "metadata": {
+    "description": "Probe client plugins (experiment tracking + read-only MCP + transcript capture).",
+    "version": "0.9.0"
+  },
+  "plugins": [
+    {
+      "name": "probe",
+      "source": "./plugins/probe",
+      "description": "Experiment-tracking skills (probe:probe, probe:track-work, probe:visualize-progress, probe:instrument-code, probe:plan-research-review) wired to a read-only Probe MCP server; writes via the `probe` CLI."
+    },
+    {
+      "name": "probe-daemon",
+      "source": "./plugins/probe-daemon",
+      "description": "The daemon profile (installed by `probe wizard` in place of probe): the Probe daemon records and reads for your coding agent. Carries instrument-code, plan-research-review, visualize-progress, the daemon's messages and questions, and the guard; no MCP."
+    },
+    {
+      "name": "probe-tap",
+      "source": "./plugins/probe-tap",
+      "description": "Ships client-sanitized per-session Claude Code or Codex transcripts to Probe with source-bound device authentication."
+    },
+    {
+      "name": "probe-hooks",
+      "source": "./plugins/probe-hooks",
+      "description": "Probe's hook proxy, installed by `probe wizard`: hands each hook event to the Probe service on this machine. Its files never change."
+    }
+  ]
+}
