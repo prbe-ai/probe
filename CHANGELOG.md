@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.613.0
+
+- **A daemon-mode install no longer fails Cursor (or any agent) on "tools not signed in".** The check knew only the old name of the daemon's plugin (`probe-research-daemon`); fresh installs carry `probe-daemon`, so it read as an MCP login missing and `repair` found nothing to fix.
+- **The install opens no tutorial page when Probe's server says not to** (`/v1/me` `features.tutorial` false, while the tutorial is down for maintenance). The check's `tutorial_url` is then null, even when the machine has a gap left, and the backfill question has no tutorial line. An older server, or no answer, opens it as before.
+- **W&B problems found while the install looks for W&B projects wait for the one backfill question.** Every W&B review refusal the search can hit (key missing, rejected or refused by W&B; a project to pick; a project the login can't see; no projects; a W&B review that came back incomplete) is kept under an id that can never be started. `import question` shows it: the key cases as **Import all + W&B**, a project the login can't see or one to pick as a `wandb` object (`ask`, `message`, `projects`, `starts`), and no projects as one line of the question's text. A typo'd project in the login's own org is now the projects pick. `start_ids` lists the reviews Import all starts.
+- **A training process's delivery report says which of its dead letters were the caller's own (no such run, invalid values, a trashed target), as the outbox worker's report already does**, so the delivery-loss alert no longer pages on them.
+
 ## 0.612.0
 
 - **The daemon's missing-libraries line says what failed.** `probe doctor` reads the AI libraries from package metadata, so it could show them installed while every session's worker exited with "daemon mode needs the AI libraries" and nothing more. The line in `daemon-errors.log` now carries the import error (the module that is missing, a transitive one included), so a report shows why the worker could not load them.
