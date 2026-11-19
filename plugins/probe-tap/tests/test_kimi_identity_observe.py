@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from tap import companion_observe
-from tap.transcripts.session_identity import validate_identity
+from tap.transcripts.session_identity import IdentityMismatch, validate_identity
 from tap.transcripts.journal import ReconciliationRequired
 
 TUI_ID = "0d2f2223-e34e-4cd1-87e3-b8d8d39aa229"
@@ -56,8 +56,14 @@ def test_a_state_file_naming_another_session_is_refused(kimi_fixtures, tmp_path)
     state = json.loads((session / "state.json").read_text())
     state["id"] = f"session_{RUN_ID}"
     (session / "state.json").write_text(json.dumps(state))
-    with pytest.raises(ReconciliationRequired):
+    with pytest.raises(IdentityMismatch) as found:
         validate_identity(session / "agents" / "main" / "wire.jsonl", "kimi_code", TUI_ID)
+    assert found.value.other == RUN_ID, "names the chat it is, without Kimi's prefix"
+    state["id"] = "session_not-a-uuid"
+    (session / "state.json").write_text(json.dumps(state))
+    with pytest.raises(IdentityMismatch) as found:
+        validate_identity(session / "agents" / "main" / "wire.jsonl", "kimi_code", TUI_ID)
+    assert found.value.other is None
 
 
 def test_a_missing_state_file_is_refused_not_guessed(kimi_fixtures, tmp_path) -> None:

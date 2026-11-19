@@ -1,6 +1,6 @@
 {
   "name": "probe-tap",
-  "version": "0.10.78",
+  "version": "0.10.79",
   "description": "Ships sanitized per-session Codex rollouts to Probe.",
   "author": {
     "name": "Probe",

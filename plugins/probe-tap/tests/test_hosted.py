@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import stat
 import threading
 import time
@@ -24,7 +25,7 @@ from tap import config as cfg
 from tap import hosted, record_client, threadenv
 from tap import main as tapmain
 from tap import start as tap_start
-from tap.transcripts.journal import Journal
+from tap.transcripts.journal import DeliveryPending, Journal, ReconciliationRequired, SessionDeleted
 from tests.test_durable_runtime import _hosted, setup  # noqa: F401 -- the fixture
 
 # -- one environment per thread ---------------------------------------------------
@@ -257,6 +258,8 @@ def test_a_transcript_that_is_another_sessions_is_never_uploaded_and_its_claim_g
         for i in range(2)))
     published = []
     config.claimed = published.append
+    waited = []
+    config.waiting = waited.append
     free = []
 
     def sleep(_seconds):
@@ -278,6 +281,282 @@ def test_a_transcript_that_is_another_sessions_is_never_uploaded_and_its_claim_g
     assert wire.accepted == {}, "nothing of another session's transcript left the machine"
     assert free[0] is True, "the claim was let go once the mismatch was proven"
     assert not published or published[-1] is None
+    assert {"text": hosted.WAITING_OTHER_CHAT, "other": other} in waited, "and names the chat its transcript is"
+    assert waited[-1] is None, "said no more once the loop returned"
+
+
+# -- why a recorder holds no claim (`Controls.waiting`) ---------------------------------
+
+
+def _line(sid: object, text: str) -> str:
+    return json.dumps(dict(type="user", sessionId=sid, message=dict(role="user", content=text))) + "\n"
+
+
+def _stop_loop(config) -> None:
+    if getattr(config, "stop", None) is not None:
+        config.stop.set()
+    else:
+        tapmain._shutdown_requested = True
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_a_reason_goes_once_the_transcript_proves_ours_and_the_claim_is_taken(setup, monkeypatch):
+    """Another chat's transcript, then this chat's turn written on it: the reason is cleared as the
+    claim is taken, and its words were recorded under this session."""
+    config, storage, wire = setup
+    other = str(uuid4())
+    config.transcript_path.write_text(_line(other, "not yours"))
+    events = []
+    config.claimed = lambda folder: events.append(("claim", folder))
+    config.waiting = lambda reason: events.append(("waiting", reason))
+    sleeps = []
+
+    def sleep(_seconds):
+        sleeps.append(1)
+        if len(sleeps) == 1:
+            with config.transcript_path.open("a") as handle:
+                handle.write(_line(config.session_id, "mine"))
+        elif any(kind == "claim" and value for kind, value in events) or len(sleeps) > 8:
+            _stop_loop(config)
+
+    monkeypatch.setattr(tapmain.time, "sleep", sleep)
+    assert tapmain._run_durable_loop(config, storage) == 0
+    reason = {"text": hosted.WAITING_OTHER_CHAT, "other": other}
+    waits = [value for kind, value in events if kind == "waiting"]
+    assert reason in waits
+    claimed_at = next(i for i, (kind, value) in enumerate(events) if kind == "claim" and value
+                      and i > events.index(("waiting", reason)))
+    assert events[claimed_at + 1] == ("waiting", None), "cleared as the claim was taken"
+    assert waits[-1] is None
+    assert wire.accepted, "recorded once the transcript proved ours"
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_a_server_failure_once_the_transcript_proves_ours_replaces_the_other_chat_reason(setup, monkeypatch):
+    """Let go for another chat's transcript, then the transcript proves ours while the server fails:
+    the row names the server, not the other chat (the claim was let go, the journal kept)."""
+    config, storage, wire = setup
+    other = str(uuid4())
+    config.transcript_path.write_text(_line(other, "not yours"))
+    waited = []
+    config.waiting = waited.append
+    receipts, calls = wire.receipts, []
+
+    def failing_later(*args, **kwargs):
+        calls.append(1)
+        if len(calls) > 1:
+            raise DeliveryPending("stream receipts unavailable (http 503)",
+                                  safe_message="HTTP 503: transcript request was not accepted")
+        return receipts(*args, **kwargs)
+
+    monkeypatch.setattr(wire, "receipts", failing_later)
+    sleeps = []
+
+    def sleep(_seconds):
+        sleeps.append(1)
+        if len(sleeps) == 1:
+            with config.transcript_path.open("a") as handle:
+                handle.write(_line(config.session_id, "mine"))
+        elif len(sleeps) > 2:
+            _stop_loop(config)
+
+    monkeypatch.setattr(tapmain.time, "sleep", sleep)
+    tapmain._run_durable_loop(config, storage)
+    said = [reason for reason in waited if reason is not None]
+    assert said[0] == {"text": hosted.WAITING_OTHER_CHAT, "other": other}
+    assert said[-1] == {"text": f"{hosted.WAITING_SERVER} (HTTP 503: transcript request was not accepted)",
+                        "other": None}
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_a_transcript_that_names_no_chat_any_more_leaves_no_stale_reason(setup, monkeypatch):
+    config, storage, _wire = setup
+    other = str(uuid4())
+    config.transcript_path.write_text(_line(other, "not yours"))
+    waited, seen = [], []
+    config.waiting = waited.append
+
+    def sleep(_seconds):
+        seen.append(waited[-1] if waited else None)
+        if len(seen) == 1:
+            config.transcript_path.write_text(json.dumps({"type": "summary", "summary": "x"}) + "\n")
+        else:
+            _stop_loop(config)
+
+    monkeypatch.setattr(tapmain.time, "sleep", sleep)
+    tapmain._run_durable_loop(config, storage)
+    assert seen[0] == {"text": hosted.WAITING_OTHER_CHAT, "other": other}
+    assert seen[1] is None, "the transcript names no chat now: nothing stale is said"
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_a_transcript_naming_a_malformed_id_says_another_chat_with_no_id(setup, monkeypatch):
+    config, storage, wire = setup
+    config.transcript_path.write_text(_line("not-a-uuid", "whose?"))
+    waited = []
+    config.waiting = waited.append
+    monkeypatch.setattr(tapmain.time, "sleep", lambda _seconds: _stop_loop(config))
+    assert tapmain._run_durable_loop(config, storage) == 0
+    assert {"text": hosted.WAITING_OTHER_CHAT, "other": None} in waited
+    assert waited[-1] is None and wire.accepted == {}
+
+
+def test_the_named_chat_is_a_normalized_uuid_or_none(tmp_path):
+    """Never a raw object from the file: an id in any UUID spelling reads lowercase and hyphenated;
+    headers that disagree name no one."""
+    from tap.transcripts.session_identity import IdentityMismatch, validate_identity
+
+    sid, other, third = (str(uuid4()) for _ in range(3))
+    claude = tmp_path / "claude.jsonl"
+    claude.write_text(_line(other.upper().replace("-", ""), "x"))
+    with pytest.raises(IdentityMismatch) as found:
+        validate_identity(claude, "claude_code", sid)
+    assert found.value.other == other
+    for bad in (["a", "list"], 42, "not-a-uuid"):
+        claude.write_text(_line(bad, "x"))
+        with pytest.raises(IdentityMismatch) as found:
+            validate_identity(claude, "claude_code", sid)
+        assert found.value.other is None
+    codex = tmp_path / "codex.jsonl"
+    codex.write_text("".join(json.dumps({"type": "session_meta", "payload": {"id": i, "cwd": "/w"}}) + "\n"
+                             for i in (sid, third)))
+    with pytest.raises(IdentityMismatch, match="conflicting") as found:
+        validate_identity(codex, "codex", sid)
+    assert found.value.other is None
+
+
+@pytest.mark.parametrize(
+    ("error", "said"),
+    [
+        (lambda: DeliveryPending("stream receipts unavailable (http 503)",
+                                 safe_message="HTTP 503: transcript request was not accepted"),
+         "HTTP 503: transcript request was not accepted"),
+        (lambda: DeliveryPending("stream receipts unavailable at /private/path"), "DeliveryPending"),
+    ],
+    ids=["safe-message", "no-safe-message-says-only-its-class"],
+)
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_receipts_failing_before_the_first_claim_says_the_server(setup, monkeypatch, error, said):
+    config, storage, wire = setup
+    waited = []
+    config.waiting = waited.append
+
+    def receipts(*_args, **_kwargs):
+        raise error()
+
+    monkeypatch.setattr(wire, "receipts", receipts)
+    seen = []
+
+    def sleep(_seconds):
+        seen.append(waited[-1] if waited else None)
+        _stop_loop(config)
+
+    monkeypatch.setattr(tapmain.time, "sleep", sleep)
+    tapmain._run_durable_loop(config, storage)
+    assert seen[0] == {"text": f"{hosted.WAITING_SERVER} ({said})", "other": None}
+    assert waited[-1] is None, "cleared at the loop's exit"
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+@pytest.mark.parametrize(
+    ("where", "error"),
+    [
+        pytest.param("open", sqlite3.OperationalError("unable to open database file"), id="journal-will-not-open"),
+        pytest.param("open", ReconciliationRequired("unsupported transcript journal version; state preserved"),
+                     id="journal-version-unsupported"),
+        pytest.param("claim", OSError("[Errno 24] Too many open files"), id="claim-lock-fails"),
+    ],
+)
+def test_a_local_failure_at_the_claim_says_local_storage_not_the_server(setup, monkeypatch, where, error):
+    """The server's receipts came; this machine's journal failed at the claim, whatever the error's
+    class (a version it cannot read raises the server's class): not the server's fault (PR 5408)."""
+    config, storage, _wire = setup
+    waited = []
+    config.waiting = waited.append
+
+    def fail(*_args, **_kwargs):
+        raise error
+
+    if where == "open":
+        monkeypatch.setattr(tapmain, "Journal", fail)
+    else:
+        monkeypatch.setattr(Journal, "claim_live", fail)
+    monkeypatch.setattr(tapmain.time, "sleep", lambda _seconds: _stop_loop(config))
+    tapmain._run_durable_loop(config, storage)
+    assert waited[0] == {"text": f"{hosted.WAITING_LOCAL} ({type(error).__name__})", "other": None}
+    assert waited[-1] is None
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_a_later_failure_outside_the_claim_names_no_reason(setup, monkeypatch):
+    """A pass failing before any claim step says nothing, not the last claim's reason nor local storage."""
+    config, storage, wire = setup
+    waited, passes = [], []
+    config.waiting = waited.append
+
+    def no_receipts(*_args, **_kwargs):
+        raise DeliveryPending("stream receipts unavailable (http 503)",
+                              safe_message="HTTP 503: transcript request was not accepted")
+
+    verdict = tapmain.capture_gate.verdict
+
+    def failing_later(*args, **kwargs):
+        if passes:
+            raise OSError("[Errno 5] Input/output error")
+        return verdict(*args, **kwargs)
+
+    def sleep(_seconds):
+        passes.append(1)
+        if len(passes) > 1:
+            _stop_loop(config)
+
+    monkeypatch.setattr(wire, "receipts", no_receipts)
+    monkeypatch.setattr(tapmain.capture_gate, "verdict", failing_later)
+    monkeypatch.setattr(tapmain.time, "sleep", sleep)
+    tapmain._run_durable_loop(config, storage)
+    assert waited[0] == {"text": f"{hosted.WAITING_SERVER} (HTTP 503: transcript request was not accepted)",
+                         "other": None}
+    assert waited[1] is None, "the second pass failed outside the claim: no reason"
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_ingestion_switched_off_before_any_claim_says_so(setup, monkeypatch):
+    config, storage, _wire = setup
+    waited = []
+    config.waiting = waited.append
+    monkeypatch.setattr(tapmain.killswitch, "is_ingestion_enabled", lambda **kw: (False, "maintenance"))
+    monkeypatch.setattr(tapmain.time, "sleep", lambda _seconds: _stop_loop(config))
+    assert tapmain._run_durable_loop(config, storage) == 0
+    assert waited[0] == {"text": hosted.WAITING_INGESTION_OFF, "other": None} and waited[-1] is None
+
+
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_a_session_deleted_before_any_claim_says_so(setup, monkeypatch):
+    config, storage, wire = setup
+    waited = []
+    config.waiting = waited.append
+
+    def receipts(session_id, **_page):
+        raise SessionDeleted(session_id)
+
+    monkeypatch.setattr(wire, "receipts", receipts)
+    monkeypatch.setattr(tapmain.time, "sleep", lambda _seconds: _stop_loop(config))
+    assert tapmain._run_durable_loop(config, storage) == 0
+    assert {"text": hosted.WAITING_DELETED, "other": None} in waited and waited[-1] is None
+
+
+def test_the_waiting_lines_are_the_ones_the_service_and_the_server_read():
+    """Pinned: the service builds `last` from these, and the server's bug report
+    (`app/ops/diagnostics/manual_report.py`) knows their beginnings."""
+    assert hosted.WAITING_OTHER_CHAT == "its transcript names another chat"
+    assert hosted.WAITING_SERVER == "cannot get the session from Probe's server"
+    assert hosted.WAITING_LOCAL == "cannot use its local storage"
+    assert hosted.WAITING_INGESTION_OFF == "Probe ingestion is off"
+    assert hosted.WAITING_DELETED == "deleted at the customer's request"
+    controls = hosted.Controls()
+    assert controls.waiting is None
+    controls.set_waiting({"text": hosted.WAITING_INGESTION_OFF, "other": None})
+    assert controls.waiting == {"text": "Probe ingestion is off", "other": None}
 
 
 # -- hosted.record ---------------------------------------------------------------------
