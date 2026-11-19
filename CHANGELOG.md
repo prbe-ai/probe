@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.615.0
+
+- **Probe's status line no longer shows twice when another tool wraps it.** A status line command carrying `# probe-statusline-wrapper` counts as Probe's line: Probe leaves that slot alone, and `probe statusline uninstall` says to take the line out there. An update now refreshes a Probe status line that is there and never adds one that was removed.
+
 ## 0.614.0
 
 - **Codex keeps running Probe's hooks across Probe updates, on every machine.** Codex trusts a plugin's hooks by a
