@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.614.0
+
+- **Codex keeps running Probe's hooks across Probe updates, on every machine.** Codex trusts a plugin's hooks by a
+  hash of the whole plugin, so each Probe release made it ask again. A fresh install now moves Codex straight to
+  Probe's frozen hook shim (`probe-hooks`, whose files never change) and approves it; the Probe service's healer
+  moves a machine not on it yet within a minute, and the switch to Probe's new plugin names moves it first. A shim
+  that goes missing or unapproved is installed and approved again (a hook you switched off in `/hooks` stays off),
+  never rolled back to the old hooks. On the shim, Probe also keeps the approval of its old plugins' switched-off
+  hooks current (it never switches them on), so Codex stops asking about them at start. When the move has not
+  happened, `probe doctor` and the update say why.
+- **A session recorder that runs but records nothing now says why in its status**: its transcript is another chat's (naming that chat only when Probe records it on this machine, and saying whether Probe is off for it, its recorder holds it, or no recorder here does), it cannot get the session from Probe's server (with the error's safe wording), it cannot use its local storage, Probe ingestion is off, or the session was deleted. `probe doctor` and `probe doctor --send` show it in the recorder's `last`. Tap 0.10.79.
+
 ## 0.613.0
 
 - **A daemon-mode install no longer fails Cursor (or any agent) on "tools not signed in".** The check knew only the old name of the daemon's plugin (`probe-research-daemon`); fresh installs carry `probe-daemon`, so it read as an MCP login missing and `repair` found nothing to fix.
