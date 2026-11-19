@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.611.0
+
+- **Probe's plugins now publish only to `prbe-ai/probe`; the old public repo, `prbe-ai/research-os-agent`, gets no new versions.** It stays readable and clonable, so an install still on the old names updates its marketplace without an error, but it gets no new plugin versions. `probe update` moves an install to the new names (since CLI 0.513.0). On an install the move keeps on the old names, `probe update` now says its plugins stay at their version and why (the reason `probe doctor` gives), where it would report a failed update with manual commands that could not help. A refresh or update command that fails is still reported as before.
+
 ## 0.610.0
 
 - **`probe exec` says on stderr when nothing inside the job reported.** When the wrapped command exits and nothing in it called `probe.init()` (the server has no `attached_at`) and the run has no metrics, it prints `probe: nothing inside this job called probe.init(), so run <slug> has its start, end and exit code but no metrics.` and how to fix it. The dashboard has shown "No in-process capture" for this since 0205, but the agent that launched the run reads the command's output: twice a trainer logging only to W&B ran under `probe exec` and nobody knew until the researcher asked. Advisory only: the exit code is unchanged, a hand-off (`sbatch`, `--detached-launcher`) says nothing, and a failed read or a pre-0205 server says nothing.
