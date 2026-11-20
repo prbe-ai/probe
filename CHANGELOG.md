@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.616.0
+
+- **After sign-in approval, the install shows how far the first download is (plan Part A).** While Probe's first download runs, `npx -y probe-research sign-in --wait --json` answers every ~15 s instead of holding ~100 s, with the percent and the time left in `say` ("downloading, 45%, about 1 min left.") and a new `progress` field ("45%, about 1 min left") for the agent's checklist. The launcher counts the bytes uv puts on disk (new archive entries, the new Python, in-flight temp folders; never env links) against the size a cold install ends at (394 MB measured on linux x86_64). No percent on a warm cache, an older uv or an unknown platform: the line stays as before. `agent_install.refused` now carries the download's `stage` and `percent`. Launcher 0.47.0.
+
+W&B: when Find names a W&B project the login doesn't have (a misspelt name in your own W&B team, or the same name in a team it isn't in), the projects to pick from list the closest names first, so the one you meant is not cut from the short list.
+
 ## 0.615.0
 
 - **Probe's status line no longer shows twice when another tool wraps it.** A status line command carrying `# probe-statusline-wrapper` counts as Probe's line: Probe leaves that slot alone, and `probe statusline uninstall` says to take the line out there. An update now refreshes a Probe status line that is there and never adds one that was removed.
