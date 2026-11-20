@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.617.0
+
+- **Probe now reports why it could not move Codex onto its hook shim**, so the Probe team can fix a stuck machine without asking you.
+
 ## 0.616.0
 
 - **After sign-in approval, the install shows how far the first download is (plan Part A).** While Probe's first download runs, `npx -y probe-research sign-in --wait --json` answers every ~15 s instead of holding ~100 s, with the percent and the time left in `say` ("downloading, 45%, about 1 min left.") and a new `progress` field ("45%, about 1 min left") for the agent's checklist. The launcher counts the bytes uv puts on disk (new archive entries, the new Python, in-flight temp folders; never env links) against the size a cold install ends at (394 MB measured on linux x86_64). No percent on a warm cache, an older uv or an unknown platform: the line stays as before. `agent_install.refused` now carries the download's `stage` and `percent`. Launcher 0.47.0.
