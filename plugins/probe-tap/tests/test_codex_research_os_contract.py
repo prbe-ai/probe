@@ -25,8 +25,8 @@ def test_hosted_gateway_contract_is_research_os() -> None:
 def test_codex_lifecycle_hooks_start_and_stop_capture() -> None:
     """The exact event set, not a subset.
 
-    Claude Code reads hooks.json; Codex reads hooks/codex.json, the same entries
-    (test below), so every event added here reaches Codex too. UserPromptSubmit
+    Claude Code reads hooks.json; Codex reads hooks/codex.json, which holds no
+    hook (test below): Codex reaches the tap through the frozen shim. UserPromptSubmit
     is the respawn hook (hooks/ensure-daemon.sh): on a
     harness that never dispatches the event it is inert, and on one that does
     but carries no `session_id` the script exits 0 without spawning. Keeping
@@ -35,10 +35,10 @@ def test_codex_lifecycle_hooks_start_and_stop_capture() -> None:
     """
     hooks = json.loads((PLUGIN_ROOT / "hooks" / "hooks.json").read_text())
     assert set(hooks["hooks"]) == {"SessionStart", "UserPromptSubmit", "SessionEnd", "Stop"}
-    # Stop is the daemon's turn-end signal (hooks/turn-end.sh). It reaches Codex
-    # too, by decision: it writes only when the session is in `daemon` and the
-    # payload names a transcript, prints nothing, and exits 0 on every failure,
-    # so where Codex sends no transcript path the worker keeps its quiet timer.
+    # Stop is the daemon's turn-end signal (hooks/turn-end.sh): it writes only when
+    # the session is in `daemon` and the payload names a transcript, prints nothing,
+    # and exits 0 on every failure, so where an agent sends no transcript path the
+    # worker keeps its quiet timer.
     turn = hooks["hooks"]["Stop"][0]["hooks"][0]
     assert "turn-end.sh" in turn["command"] and turn["timeout"] == 3
     assert "statusMessage" not in turn
@@ -53,12 +53,13 @@ def test_codex_lifecycle_hooks_start_and_stop_capture() -> None:
     # stood beside it, kept only because Codex trusts a hook by a hash of its
     # whole entry; dropping it costs a Codex user who approved only that one a
     # single re-approval, which `probe status` announces (`codex_hooks`).
-    # Never change this entry again: that would ask every Codex user again.
+    # Never change this entry again: an agent that trusts a hook by a hash of its
+    # entry would ask again.
     assert [len(group["hooks"]) for groups in hooks["hooks"].values() for group in groups] == [1] * 4
     assert len(hooks["hooks"]["SessionEnd"]) == 1
     assert end["command"].endswith('exec \"$ROOT/hooks/session-end.sh\" --wait\'')
     # 20s: Claude Code enforces each hook's own timeout, and a container that
-    # raises its exit budget needs the full 15s wait. Codex gets 3s (below).
+    # raises its exit budget needs the full 15s wait.
     assert end["timeout"] == 20
     assert ensure["timeout"] == 5
     # Silent on the common path: this one fires on every prompt.
@@ -87,12 +88,10 @@ def test_codex_reads_its_own_hooks_file_within_its_caps() -> None:
     assert claude["SessionEnd"][0]["hooks"][0]["timeout"] == 20
 
 
-def test_codex_runs_the_same_entries_as_claude_code() -> None:
-    """codex.json is hooks.json with each capped timeout at Codex's cap: same events, commands, messages."""
-    codex = json.loads((PLUGIN_ROOT / "hooks" / "codex.json").read_text())["hooks"]
-    claude = json.loads((PLUGIN_ROOT / "hooks" / "hooks.json").read_text())["hooks"]
-    for event, cap in CODEX_CAPPED_EVENTS.items():
-        for group in claude.get(event, []):
-            for hook in group["hooks"]:
-                hook["timeout"] = min(hook["timeout"], cap)
-    assert codex == claude
+def test_codex_runs_no_tap_hook() -> None:
+    """Codex trusts a plugin hook by a hash of the WHOLE plugin, so each tap release made its hooks
+    "modified" and Codex asked again at start. Its file holds no hook; the frozen shim (probe-hooks)
+    hands Codex's events to the Probe service instead. Claude Code keeps hooks.json."""
+    assert _codex_hooks_file() == PLUGIN_ROOT / "hooks" / "codex.json"
+    assert json.loads(_codex_hooks_file().read_text()) == {"hooks": {}}
+    assert json.loads((PLUGIN_ROOT / "hooks" / "hooks.json").read_text())["hooks"]

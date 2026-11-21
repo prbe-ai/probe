@@ -17,6 +17,7 @@
     "mcp"
   ],
   "skills": "./agent-skills/",
+  "hooks": "./hooks/codex.json",
   "mcpServers": {
     "probe": {
       "url": "https://mcp.research.prbe.ai/mcp",

@@ -6,18 +6,19 @@ entry runs a script from the folder the session started with
 An update installs a new folder beside it; until now the open session kept
 running the old scripts (#3338's Python picker never reached one). So:
 
-  * the entries (hooks.json, and Codex's own hooks/codex.json) are FROZEN
-    (pinned here): Codex trusts each by a hash of the whole entry and silently
-    skips a changed one until the person approves it again, so changing one
-    would switch capture off for every Codex user. What may change lives
-    behind them, in the scripts;
+  * the entries (hooks.json) are FROZEN (pinned here): a changed entry asks
+    for approval again, so what may change lives behind them, in the scripts.
+    Codex's own hooks/codex.json is pinned EMPTY: Codex trusts a plugin hook by
+    a hash of the whole plugin, so every release asked again; Codex runs the
+    tap through the frozen shim (probe-hooks) instead. A Codex session opened
+    before that still runs the entries it loaded, hooks.json's commands;
   * every script an entry runs first hands the event to the INSTALLED copy's
     same script (`hooks/installed-tap.sh`), resolved as the Probe plugin's
     dispatcher resolves its own (`dispatch.installed_root`): Claude Code's
     install ledger, the newest version folder in Codex's cache, the folder
     Kimi's plugin list records; anything unexpected runs the event where it is.
 
-These drive the REAL entry commands (hooks.json, codex.json, the tap's Kimi manifest)
+These drive the REAL entry commands (hooks.json, the tap's Kimi manifest)
 against version folders laid out as each agent keeps them. Each copy's scripts
 carry one extra line right after their `set` line, past the hand-over, that
 writes which copy ran the event (and with what root, arguments and payload) and
@@ -55,18 +56,16 @@ pytestmark = pytest.mark.skipif(os.name != "posix", reason="the hooks are POSIX 
 
 # --- the frozen entries -----------------------------------------------------------
 
-#: One hash per entry. Changing a codex.json one switches that hook off for every
-#: Codex user until they approve it again in /hooks, with nothing in their
-#: session saying so; codex.json mirrors hooks.json (test_codex_research_os_contract).
-#: Change the script it runs instead.
+#: One hash per entry. Changing one asks every agent that trusts hooks by hash to
+#: approve it again. Change the script it runs instead.
 PINNED = {
     "SessionStart": "137dfa32ac77abd6",
     "UserPromptSubmit": "b2e19d419b3e38de",
     "SessionEnd": "7d33e4db9ee10730",
     "Stop": "8472c9fc0adc9bf4",
 }
-#: Codex's SessionEnd is hooks.json's at Codex's 3s cap (tap 0.10.70: the 20s drew a load warning).
-PINNED_CODEX = {**PINNED, "SessionEnd": "2c484bfd06e0ec09"}
+#: Codex's file holds no hook (tap 0.10.80): nothing in it to review after a release.
+PINNED_CODEX: dict = {}
 
 
 def _entry_hash(event: str, matcher, hook: dict) -> str:
@@ -208,7 +207,9 @@ class Box:
             (entry,) = [e for e in entries if e["event"] == event]
             command = entry["command"]
         else:
-            command = (CODEX_ENTRIES if "PLUGIN_ROOT" in env else CLAUDE_ENTRIES)[event][0]["hooks"][0]["command"]
+            # Codex's entries until tap 0.10.80 ran these same commands (a Codex session opened before
+            # then still runs them), so a Codex layout drives hooks.json's command with PLUGIN_ROOT set.
+            command = CLAUDE_ENTRIES[event][0]["hooks"][0]["command"]
         return subprocess.run(command, shell=True, executable="/bin/bash", input=payload, text=True,
                               capture_output=True, env=env, timeout=30, cwd=str(self.tmp))
 

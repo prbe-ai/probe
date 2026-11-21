@@ -16,6 +16,7 @@
     "research"
   ],
   "skills": "./agent-skills/",
+  "hooks": "./hooks/codex.json",
   "interface": {
     "displayName": "Probe (daemon)",
     "shortDescription": "The Probe daemon records and reads for this agent",
