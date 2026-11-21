@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.618.0
+
+- **Probe's hooks keep working on a machine with very many sessions open.** Past 1,024 open files the service's hook runs, CLI host and stdin feeder failed with `ValueError: filedescriptor out of range in select()`, so every hook timed out; they now wait with `poll()`, which takes any descriptor.
+- **Codex stops asking you to approve Probe's hooks again after every Probe update (tap 0.10.80).** Codex approves a plugin's hooks by a fingerprint of the whole plugin, so each Probe release made the hooks of Probe's older plugins (`probe`, `probe-daemon`, `probe-tap`) count as changed, and Codex asked again at start, even for hooks you had switched off. Those plugins now give Codex no hooks at all; Codex runs Probe through `probe-hooks`, which never changes, so there is nothing left to approve after an update. Their skills and connection stay. Claude Code, Kimi Code and Cursor keep the same hooks as before.
+- **An update no longer counts as failed because an older Probe left a `probe` script on PATH.** A `probe` script that starts one of Probe's own older environments (kept or already deleted) is now replaced with Probe's link, as an old link already was. Any other file in the way is named with what it starts, so `probe doctor --send` shows what is there.
+- **Recommended now starts new chats off; auto mode turns Probe on for ML work.** `install --recommended` saves new chats as off (it saved on since D88) and keeps auto, so the agent turns Probe on in each chat that is ML work. Where Recommended picks no auto (the team refused the daemon), new chats still start on, since nobody would turn them on. Let me pick, `--session-default` and what a computer already stores are unchanged. The install chat itself starts off too; the live example turns an auto chat on without asking.
+- **No "session transcript not recorded" while Probe is still starting.** A `not started` reading in the first 10 s after a chat's switch moved (its start included), or the first 30 s after the Probe service started, now carries `starting_until`, and the status line, the notice and pi's footer show no note until then. The status line's grace ends at most 30 s after the chat first read `not started`, so a service restarting in a loop cannot hide it for longer. After that a chat nothing records still shows `not started`.
+
 ## 0.617.0
 
 - **Probe now reports why it could not move Codex onto its hook shim**, so the Probe team can fix a stuck machine without asking you.
