@@ -51,6 +51,13 @@ describe("initializeTrackingState", () => {
     });
   });
 
+  it("reads capture's `starting_until` (the CLI's grace for a chat Probe is still taking)", async () => {
+    const capture = { running: false, pid: null, reason: "not started", starting_until: 1700000000.5 };
+    const answer = { session_id: "pi-session-1", tracking: true, signal: "on", seeded: true, source: "machine", capture };
+    const state = await initializeTrackingState("pi-session-1", "/repo", deps(service(answer)));
+    expect(state?.capture).toEqual({ running: false, reason: "not started", startingUntil: 1700000000.5 });
+  });
+
   it.each([
     { sent: true, read: true },
     { sent: false, read: false },
@@ -218,6 +225,21 @@ describe("renderFooter", () => {
     // Transcripts turned off on purpose explain a daemon that records nothing: no fault, no `daemon not recording`.
     expect(renderFooter({ tracking: true, daemonLive: false, capture: off })).toBe("● on (daemon) | transcripts off");
     expect(renderFooter({ tracking: true, capture: off })).toBe("● on (inline) | transcripts off");
+  });
+
+  it("shows no note while Probe is still taking the chat, and `not started` once that grace ends (2026-11-21)", () => {
+    const now = Date.now() / 1000;
+    const starting = { running: false, reason: "not started", startingUntil: now + 30 };
+    const late = { running: false, reason: "not started", startingUntil: now - 1 };
+    expect(renderFooter({ tracking: true, capture: starting })).toBe("● on (inline)");
+    expect(renderFooter({ tracking: true, capture: late })).toBe("● on (inline) | session transcript not recorded: not started");
+    expect(renderFooter({ tracking: true, capture: { running: false, reason: "not started" } })).toBe(
+      "● on (inline) | session transcript not recorded: not started",
+    );
+    // Only `not started` waits: a dead recorder's own reason still shows inside the grace.
+    expect(renderFooter({ tracking: true, capture: { running: false, reason: "halted", startingUntil: now + 30 } })).toBe(
+      "● on (inline) | session transcript not recorded: halted",
+    );
   });
 
   it("says nothing about capture or the daemon when the session reads: a lowering only", () => {

@@ -20,7 +20,15 @@ import { findProbeBinary, type ProbeBinaryDeps } from "./probeBinary.js";
 export interface CaptureReading {
   running: boolean;
   reason: string;
+  /**
+   * With `not started`: when Probe stops counting as still taking the chat (epoch seconds; `starting_until`, the
+   * CLI's `session_marker.get_starting_until`). Until then the footer shows no note (Richard, 2026-11-21).
+   */
+  startingUntil?: number;
 }
+
+/** Capture's `not started` (`session_marker.NOT_STARTED_REASON`). */
+export const NOT_STARTED_REASON = "not started";
 
 /** The switch's four stored states. Mirrors `session_marker.STATES`. */
 export const ProbeState = {
@@ -297,9 +305,13 @@ export function parseProfile(raw: unknown): RecorderValue {
  */
 function parseCapture(raw: unknown): CaptureReading | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
-  const { running, reason } = raw as { running?: unknown; reason?: unknown };
+  const { running, reason, starting_until: startingUntil } = raw as {
+    running?: unknown;
+    reason?: unknown;
+    starting_until?: unknown;
+  };
   if (typeof running !== "boolean" || typeof reason !== "string") return undefined;
-  return { running, reason };
+  return typeof startingUntil === "number" ? { running, reason, startingUntil } : { running, reason };
 }
 
 /** `configured`, read leniently: an unknown word is absent (render from the rest), never a guess. */
@@ -414,7 +426,7 @@ export interface FooterReading {
 function pickFooterNote(reading: FooterReading, recording: boolean): string {
   const lowered = getLoweredNote(reading.lowered);
   if (!recording) return lowered;
-  const { capture } = reading;
+  const capture = isStillStarting(reading.capture) ? undefined : reading.capture;
   const chosenOff = capture !== undefined && !capture.running && capture.reason === CHOSEN_OFF_REASON;
   if (capture !== undefined && !capture.running && !chosenOff) {
     return `${FooterNote.TranscriptNotRecorded}: ${capture.reason.replace(/[\r\n]+/g, " ")}`;
@@ -422,6 +434,17 @@ function pickFooterNote(reading: FooterReading, recording: boolean): string {
   if (!reading.inline && reading.daemonLive === false && !chosenOff) return FooterNote.DaemonNotRecording;
   if (lowered) return lowered;
   return chosenOff ? FooterNote.TranscriptsOff : "";
+}
+
+/** `session_marker.CAPTURE_SERVICE_GRACE_S`: no `starting_until` lies further ahead than this. */
+const STARTING_GRACE_MAX_MS = 30_000;
+
+/** A `not started` while Probe is still taking the chat (`session_marker._is_still_starting`): no note yet. */
+function isStillStarting(capture: CaptureReading | undefined): boolean {
+  if (capture === undefined || capture.running || capture.reason !== NOT_STARTED_REASON) return false;
+  const untilMs = (capture.startingUntil ?? Number.NaN) * 1000;
+  const now = Date.now();
+  return untilMs > now && untilMs <= now + STARTING_GRACE_MAX_MS;
 }
 
 /** `words` with manual mode inside its parentheses (`session_marker.get_state_words(..., is_manual=True)`). */
