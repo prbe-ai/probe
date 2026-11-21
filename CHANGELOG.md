@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.619.0
+
+- No user-facing changes.
+
 ## 0.618.0
 
 - **Probe's hooks keep working on a machine with very many sessions open.** Past 1,024 open files the service's hook runs, CLI host and stdin feeder failed with `ValueError: filedescriptor out of range in select()`, so every hook timed out; they now wait with `poll()`, which takes any descriptor.
