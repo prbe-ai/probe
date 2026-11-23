@@ -29,6 +29,8 @@ probe.log({"loss": 0.42}, step=42)   # ambient: no handle to thread through call
 probe.finish()
 ```
 
+Always say what the run is when you create it (`run_type`): `sft` for supervised fine-tuning, `rl` for RL training or an agent eval, `general` for anything else. A run that does not say reads as Other: Probe never guesses it.
+
 Pass the run's whole config object as is - `args`, a Hydra `DictConfig` (never a
 resolved copy), a dataclass or a dict - not a few picked keys. Keep credentials
 out of it. A trainer integration that already records config needs none.
