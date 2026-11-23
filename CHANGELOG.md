@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.620.0
+
+- **Runs and node daemons agree on which machine they are on, on more clouds.** The writer beat's `node_key`
+  now matches the `probe-node` daemon's on GCP (`<project>/<zone>/<name>`), Azure (the VM's resource id),
+  OCI (the instance OCID) and Lambda Cloud (its instance id, read from cloud-init), so the server can tie a
+  run's GPUs to the node there too. `instance_id` is the instance name on GCP and Azure.
+- **`probe-node selftest`: check a machine before installing the node daemon.** A read-only run (it never
+  enrolls and writes nothing outside a temp dir) that reports PASS / WARN / FAIL / SKIP for the platform
+  (OS, kernel, glibc, systemd, SELinux, AppArmor, cgroup version, root, lock and state dir), NVML (library
+  path, driver and CUDA, every GPU with MIG, NVLink fabric state and persistence; a shim NVML without
+  `/dev/nvidia*` warns), `dcgmi diag -r 1` when DCGM is installed (`--diag 2` opt-in), process visibility
+  (a marked child read back through `/proc`, plus the install mode to use), cloud identity, the network
+  path to the API (`--api <url>`: DNS, TCP, TLS, proxy, `/healthz`, clock skew) and the billing labels
+  enrollment would send. Ends with a paragraph to paste to us; `--json` and `--junit <path>` for machines.
+  Exit 0 all pass, 1 any failure, 2 only warnings. Also `node.sh selftest`, which needs no token.
+- **probe-node: fixes from the conformance audit.** A process whose GPU memory NVML cannot attribute no
+  longer gets the whole report refused; a single failed NVML read no longer ends every job on the machine
+  (the last good reading stands in for 60 s); re-running the installer to upgrade restarts the service and a
+  running daemon picks up a rotated credential instead of going dark; a full disk at enrollment no longer
+  loops; a report too large for the API drops its smallest processes instead of failing; a credential copied
+  inside a disk image is set aside so the copy enrolls as itself; the lock file is private; Lambda Stack on
+  your own servers is no longer mistaken for Lambda Cloud; the installer replaces a running binary safely.
+- **probe-node on Kubernetes: cluster mode, an image and a Helm chart.** `probe-node run --mode cluster` (or
+  `PROBE_NODE_MODE=cluster`) runs the daemon as a DaemonSet pod: it reads the node through `PROBE_NODE_HOST_ROOT`
+  / `PROBE_NODE_PROC_ROOT` (defaulted to `<host root>/proc`), is keyed and named by `NODE_NAME` when no cloud
+  metadata answers, keeps its credential in a hostPath state dir so restarts never re-enroll, and waits for its
+  lock during a rollout instead of crash-looping. `deploy/Dockerfile` builds a linux/amd64 + linux/arm64 image
+  by cross-compiling (no QEMU); `deploy/helm/probe-node` is the DaemonSet (hostPID, host network by default so
+  AWS IMDS answers, read-only `/proc` `/sys` `/run/cloud-init`, the host's `/run/probe-node.lock` shared with a
+  host install, enrollment token from a Secret, GPU-node selector and taint tolerations, every capability
+  dropped but `SYS_PTRACE` and `DAC_READ_SEARCH`). A kind e2e (`e2e/kind/run_kind_e2e.py`) runs on every PR.
+- **probe-node pod mode exits with the job.** As a container entrypoint the wrapper now ends when the job does,
+  with the job's exit code, so a Kubernetes Job completes and its GPU is freed (`PROBE_NODE_EXIT_WITH_JOB=0`
+  keeps reporting an idle pod). Its goodbye report says how the job ended: exit code, or the killing signal.
+- **probe-node installs from public releases.** `node.sh` downloads the daemon from the public GitHub
+  Releases (`probe-node-latest`, or a pinned `PROBE_NODE_VERSION`), checks it against the release's
+  `SHA256SUMS`, and the Helm chart installs from `oci://ghcr.io/prbe-ai/charts/probe-node`, with presets for
+  GKE (Container-Optimized OS driver path), EKS and AKS. Install guides per platform in
+  `agent/tools/probe-node/docs/install/`.
+- **`probe compute`: see the team's GPU machines and who is on each GPU.** `probe compute nodes` lists the
+  nodes their `probe-node` daemons report (cluster, provider, GPUs in use, state, last report; filter with
+  `--state`, `--capacity`, `--provider`, `--cluster`), `probe compute node <id>` shows each GPU's processes
+  and the run each belongs to (or `untracked` / `private run`), `probe compute clusters` lists clusters,
+  and `probe compute enroll-token create|list|revoke` manages the tokens that join new nodes (the secret
+  is printed once). Every read takes `--json`.
+- **Runs say where they run.** The writer lease beat now carries this process's join keys (`gpu_uuids`,
+  `node_key`, `instance_id`, `pod_uid`, `container_id`, `k8s_node`, `slurm_job_id`, `pidns`) on its first
+  beat and whenever they change, so the server can tie a node's GPU processes to the run. Read once per
+  process, off the training thread (the cloud metadata ask is capped at 200 ms); `PROBE_JOIN_KEYS=0` sends
+  none, and `PROBE_HW=0` leaves out the GPU UUIDs.
+- **The status line says `● on` when the daemon records, not `● on (daemon)`.** Claude Code's status line,
+  Kimi's, pi's footer and Codex's change notice all drop the `(daemon)` tag from the default on state; a chat
+  you set yourself reads `● on (manual)`. `● on (inline)`, `● read (daemon)` and `● off` are unchanged.
+
 ## 0.619.0
 
 - No user-facing changes.
