@@ -1,13 +1,15 @@
 ---
 name: write-pane
-description: Write a pane - a live visual on a project or experiment page. Use it unasked whenever a run, experiment or project has important data the built-in charts and tables can't show; never for what they can. When you report such results, put them in a pane too, without asking, since the researcher wants them on the page.
+description: Write a pane - a live visual on a project, experiment or run page. Use it unasked whenever a run, experiment or project has important data the built-in charts and tables can't show; never for what they can. When you report such results, put them in a pane too, without asking, since the researcher wants them on the page.
 ---
 # Write a pane
 
 A pane is your own HTML/JS plus a recipe: the data it reads, never the data itself. Probe resolves
 the recipe every time the pane opens, for the runs in view (an experiment's, a project's newest 50,
 or the runs someone picked to compare), so new runs show up without a rewrite. Panes sit at the top
-of the project's or experiment's page; summary rewrites never touch them.
+of the project's or experiment's page; summary rewrites never touch them. A pane about one run goes
+on that run (`id:<run-id>` where a command takes the project or experiment): it sits in the run's
+page and reads that run alone.
 
 First ask whether a built-in view shows it: a curve over steps is in the metric section; a score
 per run, per config or per group (a leaderboard, by a config, or by a group such as document length)
@@ -241,8 +243,8 @@ reads a saved pane's data and `probe pane list <project-or-experiment>` lists th
 so run `pane get ... --out DIR` first to keep a copy. Run it only when the researcher asks (an
 agent cannot answer its prompt, so it needs `--yes`). Its runs and their data are untouched.
 
-Pin a view only when the researcher asks, and once: pins sit at the top of the project for the
-whole team, 24 at most, so pinning and unpinning take `--directed`. `probe pane push ... --pin
+Pin a view only when the researcher asks, and once: pins sit at the top of the project (a run's
+view: the run's page) for the whole team, 24 at most, so pinning and unpinning take `--directed`. `probe pane push ... --pin
 --directed` pins the pane it saves; `probe pin add <project-or-experiment> --pane <slug> --directed`
 pins a saved one (or `--chart <metric>`, `--key-metrics`, `--parallel`); `probe pin list <project>`
 reads them and `probe pin rm <project> <pin-id> --directed` unpins. Never pin from a script or a
