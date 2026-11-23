@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.624.0
+
+- **A team launcher passes each job's experiment through.** `instrument-code` now says the experiment comes from each submit (never fixed in the shared launcher) and must already exist (`probe experiment create` first); otherwise `probe exec` refuses and the job is not submitted.
+
 ## 0.623.0
 
 - No user-facing changes.
