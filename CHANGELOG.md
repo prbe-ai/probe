@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.628.0
+
+- **MCP decisions view: a first page sent in pieces reads to the end.** When a page went out as fragments
+  (one decision too big for the token budget, or a whole page over it), each fragment re-read the page; with a
+  span like `since: "7d"` the re-read resolved a later window and changed the page's cursors, so the next
+  fragment was refused `source_changed` though no decision had changed. The re-read now sends the dates the
+  first read resolved and hands on the first read's cursors.
+- **MCP decisions view: a cursor from the previous view past row 500 is refused, not replayed.** It used to
+  return nothing and then resume at row 501, repeating decisions already read; it now says to re-run the read
+  without a cursor.
+- **`npx -y probe-research node …` is published.** The npm launcher moves to 0.48.0 so the release publishes the `node` verb added for probe-node installs (`node pod -- <cmd>`, `node selftest`, `node install`): it downloads the probe-node binary from the public release, checks it against SHA256SUMS, and runs it.
+
 ## 0.627.0
 
 - **`npx -y probe-research node ...`: the node daemon from npx.** `node pod -- <cmd>` wraps a job in a
