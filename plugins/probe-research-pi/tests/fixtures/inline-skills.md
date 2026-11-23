@@ -162,15 +162,13 @@ Before editing, read `overview-page`, `overview-contract`, `artifact-design`, `a
 
 Push refuses any other shape (limits in `overview-page`).
 
-1. One line: what it is.
-2. Up to 4 bullets; drop any with nothing to say:
+1. Up to 3 bullets, each one short line; no line above them. Drop any with nothing to say:
    - where it stands
    - next step
-   - open question
-   - what you need from the researcher
-3. Evidence: per point, a heading that says it, a visual, a caption. A logged curve, or more than three numbers compared: a chart, never a table.
+   - what you need from the researcher, or the open question
+2. Evidence: per point, a heading that says it, a visual, a caption. A logged curve, or more than three numbers compared: a chart, never a table.
 
-- The line and bullets: plain words a 10-year-old could follow, no numbers.
+- The bullets: plain words a 10-year-old could follow, no numbers.
 - Nothing else: no decisions (they have their own tab), no history, no text between sections.
 - Each update rewrites the bullets around the newest result; cut what's stale.
 - A project page covers all its parts, sized by the work in each, not by recency. Detail goes on the experiment's page.
