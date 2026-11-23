@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.622.0
+
+- **Agents can ask why work changed, by place, subject, day and words.** `probe decision list` takes
+  words (any of them), `--about experiment:<ref>|run:<ref>`, `--since`, `--until`, `--team`, `--limit`,
+  `--cursor` and `--all`; with no project it lists the team's decisions, and a project's list includes its
+  experiments' (each labelled). The MCP gains a `decisions` view (a project's and its experiments'; on an
+  experiment or run, those filed under it or naming it) and `browse(mode="decisions")`, each target named
+  `name (id:<uuid>)`. The daemon's reader may run `probe decision list` and reads decisions before
+  transcripts for a "why" ask; the agent profile's rules say the same. A server too old for these filters
+  is named in one line instead of answering unfiltered.
+- **`/probe on` says `on`, not `on (daemon)`.** The `/probe` skill (Claude Code and pi) now reports the daemon's
+  on state the way the status line does: "Probe is set to `on` for this session". `read only (daemon)` is unchanged.
+- **Runs say what they are and where they end.** `probe.init(run_type="sft")` (and `probe run start/set --type sft`)
+  marks a supervised fine-tuning run, and `probe.init(total_steps=N)` or `run.set_total_steps(N)` records the step
+  its last point is logged at, so a finished run reads N/N. TRL's SFTTrainer marks its run `sft`; the Hugging Face,
+  TRL, Lightning (`ProbeCommands`), Miles, verl and SkyRL integrations fill the total from the trainer's own step
+  count when nobody set one (Miles and Lightning count from 0, so theirs ends one below the count).
+- **Episodes from the SDK, and Harbor names its environment.** `Client.list_episodes`, `get_episode` and `find_episode` read a run's episodes. Sample parts accept episode labels (`episode_key`, `agent`, `is_trained`, `environment_name`, `environment_version`, `branch_started_by`, `parent_branch`, `parent_turn`); Harbor sends its dataset and version as the environment (on a Miles or SkyRL run too), and SkyRL its Gym env class; `find_episode` also takes an old trial link's `span_id`.
+- **`probe.environment(name, version, tasks={"train", "eval"})`.** Registers an RL environment once per name@version and records that the active run uses it; `env.sample_labels()` gives the `environment_name` / `environment_version` every sample carries. Harbor jobs register each dataset they run as an environment, and a Miles job with `VERIFIERS_CONFIG` registers its verifiers environment (`probe.connectors.verifiers`); both then stamp their samples with the name and version the server answered with (or, when registration fails, the ones they sent), so the Environments list and the Episodes tab's Env column agree. SkyRL's Harbor rows copy Harbor's labels. verl registers each `data_source` (provider `verl`) and SkyRL each Gym env class (provider `skyrl`) once per run, the first time a sample names it, with the train/eval task counts its datasets hold (counted a batch at a time). That registration runs on a background thread, so no training step waits on it; samples carry the canonical name the server stores.
+- **Summary pages: up to 3 short bullets, no opening line.** `write-summary`, `overview-page` and
+  `overview-contract` teach the shape the server now enforces: the page opens with at most 3
+  bullets of at most 6 words, then its visual sections.
+- **The daemon's summary outline reads a bullets-first page's opening.** A page that opens with its
+  bullets shows them as its opening (`- opens:`), never a section's prose further down.
+
 ## 0.621.0
 
 - **The Probe daemon tells your agent when a job trains and nothing records it.** When a job the agent
