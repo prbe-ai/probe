@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.631.0
+
+- **Panes and pins on a run.** `probe pane push|list|get|data|rm id:<run-id> ...` writes and reads a run's own panes
+  (shown on its page), `probe pin add id:<run-id> --key-metrics|--chart|--parallel|--pane` pins a view to the run's
+  page and `probe pin list id:<run-id>` lists them; the SDK's `add_pin` / `list_pins` take a run the same way
+  (`Pin.get_page()` says which page a pin is on). MCP `entity(run, view="panes")` lists a run's panes. The
+  `write-pane` skill says a pane about one run goes on that run.
+
 ## 0.630.0
 
 - **MCP decisions view: a decision too big for a small token budget is read in pieces again.** A dated read
