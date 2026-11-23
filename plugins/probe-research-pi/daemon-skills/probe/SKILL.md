@@ -21,7 +21,7 @@ When the researcher asks to change what new chats start as, run
 or `off`, once they said yes) and say it applies to new chats only.
 
 ```
-/probe on      on (daemon): the daemon records and reads     /probe          advance one step
+/probe on      on: the daemon records and reads              /probe          advance one step
 /probe read    read only (daemon): reads, files nothing      /probe status   print it, change nothing
 /probe off     off: no daemon, no Probe calls, transcript capture stops
 /probe inline  on (inline): no daemon; you read and write Probe yourself
@@ -49,7 +49,7 @@ setting, not this switch.
 
 ## SAY WHERE IT LANDED:
 
-> Probe is set to `on (daemon)` for this session - the daemon records and reads.
+> Probe is set to `on` for this session - the daemon records and reads.
 
 > Probe is set to `read only (daemon)` for this session - the daemon keeps
 > reading the team's work and files nothing; the conversation itself is still
