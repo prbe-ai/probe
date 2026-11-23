@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.625.0
+
+- **RL samples carry each turn's tokens and the tools the model was offered.** Harbor reads each ATIF agent step's
+  `metrics.prompt_tokens` / `completion_tokens` onto its turn (`Turn.usage`; an empty one where a step gave none, so
+  the page never shows the trial's totals as one call's) and `agent.tool_definitions` as the sample's `tools`; Miles
+  gives a kept-messages sample's replies their tokens from the loss mask (when the model runs and the replies are as
+  many) and sends the dataset's `--tool-key` tools, else multi_turn's `--generate-tool-specs-path`; turns rebuilt from tokens (Miles and verl without kept messages, SkyRL step-wise) count each
+  reply's own tokens, and with the prompt's ids what it read; verl's tool loop records each call's generated tokens
+  and its `tool_schemas`; ART sends `Trajectory.tools`. `run.samples.log` flattens OpenAI, flat and Anthropic tool
+  shapes to the contract and cuts past 128 tools or 32 KiB, never refusing the sample. `RolloutCapture.set_tools`
+  records them for any adapter.
+- **A tool result rebuilt from tokens carries its exact size.** Turns decoded from token ids (Miles and verl without
+  kept messages, SkyRL step-wise) give each tool result or observation `Message.result_tokens`: its span in the token
+  ids, from the chat-template marker that opens it to the next message's (a lone result: its whole block, header to
+  end-of-turn, in any wrapper). A count is set only where that span is exact (a known template, its marker one token,
+  and the cut pieces read back as the same messages); otherwise none. Harbor/ATIF,
+  ART, verl's tool loop and Miles with kept messages record no size per result, so they send none.
+
 ## 0.624.0
 
 - **A team launcher passes each job's experiment through.** `instrument-code` now says the experiment comes from each submit (never fixed in the shared launcher) and must already exist (`probe experiment create` first); otherwise `probe exec` refuses and the job is not submitted.
