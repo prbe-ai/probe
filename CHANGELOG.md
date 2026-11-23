@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.621.0
+
+- **The Probe daemon tells your agent when a job trains and nothing records it.** When a job the agent
+  launched logs steps, loss or checkpoints and no run in Probe records it (none was opened, or the one
+  opened for it still waits for the job or has no metrics), the daemon's writer tells the agent once per
+  job: `[Probe] The writer recorded: nothing for job "<job>": it reports steps, loss or checkpoints, but no
+  run in Probe records it.` plus one line on wiring it with the `instrument-code` skill, in the team's own
+  launcher if there is one. Told once per job per chat, across the writer's fresh starts, and only where
+  the daemon reads for that coding agent.
+- **Every training job records, whoever launches it.** When a team starts jobs through its own tool
+  (a submit command, a queue, a cluster), agents now wire Probe into that tool once and commit it, so
+  every job records, not only the ones one chat launched. The always-on Probe section says so in
+  every profile (pointer v69), the `instrument-code` skill shows how (`probe exec
+  --detached-launcher` gives each job a token for its own run; a teammate without Probe still
+  submits), and it says never to copy your Probe login into a secret or another machine.
+
 ## 0.620.0
 
 - **Runs and node daemons agree on which machine they are on, on more clouds.** The writer beat's `node_key`
