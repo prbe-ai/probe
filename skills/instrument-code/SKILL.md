@@ -1,6 +1,6 @@
 ---
 name: instrument-code
-description: Wires the Probe SDK (`probe.init`, `probe.log`) into a script that trains, evaluates, sweeps or serves, so that it records run-level metrics, and an RL trainer (Miles, ART, SkyRL, verl, TRL) or a Harbor job, so that it records every rollout as a sample. Use when writing or changing any such script, launching a training script on another machine, when a trainer already has its own integration (Miles, ART, SkyRL, verl, TRL, Harbor, Ray), when an agent or training or eval code in any other language (TypeScript, Rust, Go, ...) should record its runs or agent calls, and when a run finished green but recorded nothing, less than expected, or onto the wrong run. HARD TRIGGER - ENSURE YOU READ BEFORE ANY PAID GPU HOURS.
+description: "Wires the Probe SDK (`probe.init`, `probe.log`) into a script that trains, evaluates, sweeps or serves, so that it records run-level metrics, and an RL trainer (Miles, ART, SkyRL, verl, TRL) or a Harbor job, so that it records every rollout as a sample. Use when writing or changing any such script, launching a training script on another machine, when a trainer already has its own integration (Miles, ART, SkyRL, verl, TRL, Harbor, Ray), when an agent or training or eval code in any other language (TypeScript, Rust, Go, ...) should record its runs or agent calls, and when a run finished green but recorded nothing, less than expected, or onto the wrong run. HARD TRIGGER - ENSURE YOU READ BEFORE ANY PAID GPU HOURS. Also when a job goes through the team's own job tool (a submit command, a queue, a cluster): wire Probe into that tool once so every job records, whoever starts it."
 ---
 # Instrument code
 
@@ -186,13 +186,33 @@ a different one raises, and `name` / `question` are ignored with a warning. The 
 still lands on that run. If the launcher only submitted the job, `probe exec` opened the
 run AWAITING ATTACH and this same call takes ownership.
 
+THE TEAM'S OWN LAUNCHER: when jobs start through a team tool (a submit command, a
+job queue, a shared entrypoint or image), wire Probe into that shared code and
+commit it to the team's repo; a change in your own job's files or an uncommitted
+checkout records only your jobs. The launcher wraps each submit in `probe exec
+--detached-launcher --project <slug>` (it opens the run and gives the job a token
+for that run alone; name the project, since a teammate's shell has no session
+project; a job that tests a question adds `--experiment <slug>`, since the job
+joins the run the launcher opened) and passes `PROBE_RUN_ID`, `PROBE_RUN_EPOCH` and `PROBE_TOKEN` into the
+job's environment. One run per job: the ranks of one distributed job share it, but
+a submit that starts several independent jobs (an array, seeds) needs one per job
+(below). The launcher first runs `probe whoami`; where that fails (not installed,
+not signed in, server down) it submits the plain way with `PROBE_MODE=disabled` in
+the job's environment (an instrumented script without a token raises) and says so
+in one line. If `probe exec` itself fails, it shows the error and never submits
+again: the job may already be queued. Then launch one job the normal way and check
+its run appears.
+
 The credential is `PROBE_TOKEN`, plus `PROBE_BASE_URL` if you are not on the
 default server; there is NO `PROBE_API_KEY`. Give the job the run's own token,
 the `--token-ttl` one above (a `--detached-launcher` hand-off gets one anyway).
 If the run is still live near expiry, Probe alerts you and the researcher:
-`probe run token <run> --extend 7d`. Only a job that opens runs of its own
-needs the researcher's `probe token create --name <job> --scope read --scope
-write`, run in their own terminal and kept in the platform's secret store.
+`probe run token <run> --extend 7d`. Never copy your Probe login (its
+`config.json`) to another machine or into a secret: every job would then write
+as the researcher. Only a job that opens runs of its own (a sweep controller, an
+array of independent jobs, a queue nobody is signed in to) needs `probe token create --name <job> --scope
+read --scope write`, which the researcher runs in their own terminal and keeps
+in the platform's secret store.
 Recording from the launcher after the job ends loses its curves, logs and data
 reads - say so before offering it.
 
