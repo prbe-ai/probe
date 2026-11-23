@@ -72,7 +72,7 @@ a capability that is configured but does nothing.
   and its deletes go to the trash or ask the researcher first (unless the agent
   runs with permission prompts off). Setting Who records back to the agent
   revokes it, once no open session uses it. Without that token the daemon
-  cannot record: a session it records for reads `on (daemon) | daemon not recording`.
+  cannot record: a session it records for reads `on | daemon not recording`.
 - Never echo a token. `probe mcp status` reports health without printing it.
 - Signing out (`npx -y probe-research wizard --action logout --yes --json --directed`)
   revokes this computer's token; it does not touch other devices.

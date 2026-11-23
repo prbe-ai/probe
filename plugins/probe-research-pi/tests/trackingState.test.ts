@@ -197,14 +197,14 @@ describe("renderFooter", () => {
     expect(renderFooter({ tracking: true })).toBe("● on (inline)");
     expect(renderFooter({ tracking: false })).toBe("○ read (inline)");
     expect(renderFooter({ tracking: false, daemonReads: true })).toBe("○ read (daemon)");
-    expect(renderFooter({ tracking: true, daemonLive: true })).toBe("● on (daemon)");
+    expect(renderFooter({ tracking: true, daemonLive: true })).toBe("● on");
     expect(STATUS_UNAVAILABLE_FOOTER).toBe("● Probe status unavailable");
   });
 
   it("says a daemon that is not recording in the note, never in the state words", () => {
-    expect(renderFooter({ tracking: true, daemonLive: false })).toBe("● on (daemon) | daemon not recording");
+    expect(renderFooter({ tracking: true, daemonLive: false })).toBe("● on | daemon not recording");
     expect(renderFooter({ tracking: true, capture: { running: true, reason: "running" }, daemonLive: false })).toBe(
-      "● on (daemon) | daemon not recording",
+      "● on | daemon not recording",
     );
     // The researcher set Probe inline: the agent records, so the daemon is nobody's problem.
     expect(renderFooter({ tracking: true, daemonLive: false, inline: true })).toBe("● on (inline)");
@@ -215,15 +215,15 @@ describe("renderFooter", () => {
     const off = { running: false, reason: "turned off" };
     const lowered = "Probe: new chats off";
     expect(renderFooter({ tracking: true, capture: down, daemonLive: false, lowered })).toBe(
-      "● on (daemon) | session transcript not recorded: halted",
+      "● on | session transcript not recorded: halted",
     );
     expect(renderFooter({ tracking: true, capture: down, lowered })).toBe(
       "● on (inline) | session transcript not recorded: halted",
     );
-    expect(renderFooter({ tracking: true, daemonLive: false, lowered })).toBe("● on (daemon) | daemon not recording");
-    expect(renderFooter({ tracking: true, daemonLive: true, capture: off, lowered })).toBe("● on (daemon) | new chats off");
+    expect(renderFooter({ tracking: true, daemonLive: false, lowered })).toBe("● on | daemon not recording");
+    expect(renderFooter({ tracking: true, daemonLive: true, capture: off, lowered })).toBe("● on | new chats off");
     // Transcripts turned off on purpose explain a daemon that records nothing: no fault, no `daemon not recording`.
-    expect(renderFooter({ tracking: true, daemonLive: false, capture: off })).toBe("● on (daemon) | transcripts off");
+    expect(renderFooter({ tracking: true, daemonLive: false, capture: off })).toBe("● on | transcripts off");
     expect(renderFooter({ tracking: true, capture: off })).toBe("● on (inline) | transcripts off");
   });
 
@@ -258,14 +258,14 @@ describe("renderFooter", () => {
 
 describe("renderFooter in a manual chat (no probe auto mode)", () => {
   it("puts manual inside the parentheses, as the status line does", () => {
-    expect(renderFooter({ tracking: true, daemonLive: true, isManual: true })).toBe("● on (daemon, manual)");
+    expect(renderFooter({ tracking: true, daemonLive: true, isManual: true })).toBe("● on (manual)");
     expect(renderFooter({ tracking: true, isManual: true })).toBe("● on (inline, manual)");
     expect(renderFooter({ tracking: false, isManual: true })).toBe("○ read (inline, manual)");
     expect(renderFooter({ tracking: false, daemonReads: true, isManual: true, lowered: "Probe: runs only" }))
       .toBe("○ read (daemon, manual) | runs only");
   });
   it("leaves an auto chat's words untagged", () => {
-    expect(renderFooter({ tracking: true, daemonLive: true, isManual: false })).toBe("● on (daemon)");
+    expect(renderFooter({ tracking: true, daemonLive: true, isManual: false })).toBe("● on");
   });
 });
 

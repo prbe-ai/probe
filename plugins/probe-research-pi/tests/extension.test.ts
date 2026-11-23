@@ -980,12 +980,12 @@ describe("registerExtension — the footer when pi cannot say, and by the clock"
 
     it("is starting (no note) while the service's stamp says so, then `daemon not recording` with no event", async () => {
       const { ctx } = await startDaemonSession("starting", { state: "starting", atMs: EPOCH_MS });
-      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (daemon, manual)");
+      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (manual)");
       const drawn = ctx.setStatus.mock.calls.length;
       await vi.advanceTimersByTimeAsync(EPOCH_MS + DAEMON_START_GRACE_MS - Date.now());
       expect(ctx.setStatus.mock.calls.length, "the window's last moment still counts as starting").toBe(drawn);
       await vi.advanceTimersByTimeAsync(1);
-      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (daemon, manual) | daemon not recording");
+      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (manual) | daemon not recording");
     });
 
     it.each([
@@ -995,13 +995,13 @@ describe("registerExtension — the footer when pi cannot say, and by the clock"
       { name: "a stamp past its window", stamp: { state: "starting", atMs: EPOCH_MS - DAEMON_START_GRACE_MS - 1 } },
     ])("says `daemon not recording` at once after $name", async ({ stamp }) => {
       const { ctx } = await startDaemonSession("not-starting", stamp);
-      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (daemon, manual) | daemon not recording");
+      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (manual) | daemon not recording");
     });
 
     it("is starting with no end when there is no stamp yet and the key is held (`is_worker_starting`'s None)", async () => {
       // An older service writes none, and a new one before its first spawn: the status line's rule, a held key.
       const { ctx } = await startDaemonSession("no-stamp", undefined);
-      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (daemon, manual)");
+      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (manual)");
       const drawn = ctx.setStatus.mock.calls.length;
       await vi.advanceTimersByTimeAsync(DAEMON_START_GRACE_MS * 5);
       expect(ctx.setStatus.mock.calls.length, "no window, so no redraw").toBe(drawn);
@@ -1012,7 +1012,7 @@ describe("registerExtension — the footer when pi cannot say, and by the clock"
       { name: "a starting stamp", stamp: { state: "starting", atMs: EPOCH_MS } },
     ])("says `daemon not recording` with $name when the companion key is not held: it can never start", async ({ stamp }) => {
       const { ctx } = await startDaemonSession("no-key", stamp, false);
-      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (daemon, manual) | daemon not recording");
+      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (manual) | daemon not recording");
     });
 
     it("never redraws the previous session's footer after a session change", async () => {
@@ -1045,7 +1045,7 @@ describe("registerExtension — the footer when pi cannot say, and by the clock"
       const started = candidate.declarations.events.session_start!({ reason: "startup" }, ctx as never);
       await vi.advanceTimersByTimeAsync(2_500);
       await started;
-      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (daemon, manual)");
+      expect(ctx.setStatus).toHaveBeenLastCalledWith("probe-tracking", "● on (manual)");
       candidate.deactivate();
       const drawn = ctx.setStatus.mock.calls.length;
       await vi.advanceTimersByTimeAsync(DAEMON_START_GRACE_MS + 1_000);

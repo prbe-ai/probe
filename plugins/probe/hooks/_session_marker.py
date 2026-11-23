@@ -133,10 +133,10 @@ MAX_TITLE_LEN = 200
 MAX_TITLE_ROWS = 32
 
 #: The segment's ceiling in terminal columns, leading indent included: the widest line that must render whole,
-#: `  ● on (daemon) | <20-column title> | session transcript not recorded` (72). Derived, so it moves when
+#: `  ● on (inline) | <20-column title> | session transcript not recorded` (72). Derived, so it moves when
 #: the words do; only words reachable today count (a manual chat's `, manual` re-derives it).
 MAX_SEGMENT_CHARS = (
-    len(_INDENT) + _GLYPH_WIDTH + len("on (daemon)")
+    len(_INDENT) + _GLYPH_WIDTH + len("on (inline)")
     + len(STATUS_DIVIDER) + TITLE_ROOM_WITH_NOTE + len(STATUS_DIVIDER) + len(NOTE_TRANSCRIPT_NOT_RECORDED)
 )
 #: The title's budget with no note: the same in every state, so it never moves when the state does.
@@ -5308,7 +5308,7 @@ def get_daemon_fix(reason: "str | None") -> str:
 
 
 def _get_notice_words(session_state: "str | None", *, is_manual: bool = False) -> str:
-    """The notice's state words: `on (daemon)` for a stored `daemon`, else `on (inline)` (its caller knows no more),
+    """The notice's state words: `on` for a stored `daemon`, else `on (inline)` (its caller knows no more),
     tagged `manual` as the status line tags them (`is_manual`: the person sets this chat's switch)."""
     state = STATE_FULL if session_state not in (STATE_DAEMON, STATE_FULL) else session_state
     return get_state_words(state, Reader.DAEMON if state == STATE_DAEMON else Reader.INLINE, is_manual=is_manual)
@@ -6415,20 +6415,22 @@ def _elide(text: str, limit: int = MAX_TITLE_CHARS) -> str:
 
 
 def get_state_words(session_state: "str | None", reader: Reader, *, is_manual: bool = False) -> str:
-    """The state as the status line says it: `on (daemon)`, `on (inline)`, `read (daemon)`, `read (inline)`, or `off`.
-    `is_manual` (the person sets this chat's switch, not the agent) puts the manual tag inside the parentheses
-    (`on (daemon, manual)`, `off (manual)`); an auto chat has no tag (Richard, 2026-11-08). A word this copy does
-    not know raises, so a newer CLI's state renders as `status unavailable`, never as a guess."""
+    """The state as the status line says it: `on`, `on (inline)`, `read (daemon)`, `read (inline)`, or `off`.
+    The daemon recording is the plain `on`, with no `(daemon)` (Richard, 2026-11-23). `is_manual` (the person sets
+    this chat's switch, not the agent) puts the manual tag in parentheses (`on (manual)`, `on (inline, manual)`,
+    `off (manual)`); an auto chat has no tag (Richard, 2026-11-08). A word this copy does not know raises, so a
+    newer CLI's state renders as `status unavailable`, never as a guess."""
     if session_state == STATE_OFF:
         return "off (manual)" if is_manual else "off"
     if session_state in (STATE_DAEMON, STATE_FULL):
-        who = "daemon" if session_state == STATE_DAEMON and reader is Reader.DAEMON else "inline"
+        who = "" if session_state == STATE_DAEMON and reader is Reader.DAEMON else "inline"
         level = "on"
     elif session_state == STATE_READ_ONLY:
         who, level = reader.value, "read"
     else:
         raise ValueError(f"unknown session_state {session_state!r}")
-    return f"{level} ({who}, manual)" if is_manual else f"{level} ({who})"
+    tags = ", ".join(tag for tag in (who, "manual" if is_manual else "") if tag)
+    return f"{level} ({tags})" if tags else level
 
 
 def _get_reader(session_state: str, is_daemon: bool, is_inline: bool) -> Reader:

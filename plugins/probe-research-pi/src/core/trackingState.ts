@@ -321,7 +321,7 @@ function parseConfigured(raw: unknown): ConfiguredValue | undefined {
 
 /**
  * THE FOOTER: the status line's words (`session_marker`, pinned by `test_pi_core_parity.py`), in pi's idiom:
- * `● on (daemon) | <note>` (no `Probe |` prefix, 2026-11-08). No colour in pi, so the glyph says it (● records, ○ reads); no title (E1).
+ * `● on | <note>` (no `Probe |` prefix, 2026-11-08; no `(daemon)`, 2026-11-23). No colour in pi, so the glyph says it (● records, ○ reads); no title (E1).
  */
 export const STATUS_DIVIDER = " | ";
 export const RECORDING_DOT = "●";
@@ -329,7 +329,7 @@ export const READ_DOT = "○";
 
 /** The footer's words for a recording session (`get_state_words`). */
 export const RecordingLabel = {
-  Daemon: "on (daemon)",
+  Daemon: "on",
   Inline: "on (inline)",
 } as const;
 
@@ -415,7 +415,7 @@ export interface FooterReading {
   /** The newest machine-wide lowering's status words (`recording_lowered[0].status`). */
   lowered?: string;
   /** The person sets this chat's switch, not the agent (no probe auto mode here): the words say `manual`
-   * (`on (daemon, manual)`); an auto chat has no tag (Richard, 2026-11-08). */
+   * (`on (manual)`); an auto chat has no tag (Richard, 2026-11-08). */
   isManual?: boolean;
 }
 
@@ -447,9 +447,11 @@ function isStillStarting(capture: CaptureReading | undefined): boolean {
   return untilMs > now && untilMs <= now + STARTING_GRACE_MAX_MS;
 }
 
-/** `words` with manual mode inside its parentheses (`session_marker.get_state_words(..., is_manual=True)`). */
+/** `words` with manual mode inside its parentheses (`session_marker.get_state_words(..., is_manual=True)`): `on (manual)`,
+ * `read (daemon, manual)`. */
 function addManualTag(words: string, reading: FooterReading): string {
-  return reading.isManual ? words.replace(/\)$/, ", manual)") : words;
+  if (!reading.isManual) return words;
+  return words.endsWith(")") ? words.replace(/\)$/, ", manual)") : `${words} (manual)`;
 }
 
 /** The footer word for a chat Probe is off for (`get_state_words`' `off`). */
@@ -463,7 +465,7 @@ export function renderOffFooter(reading: Pick<FooterReading, "isManual">): strin
   return joinFooter(READ_DOT, reading.isManual ? `${OFF_LABEL} (manual)` : OFF_LABEL);
 }
 
-/** The footer for a session Probe is not off for: `● on (daemon)`, `○ read (inline) | runs only`. */
+/** The footer for a session Probe is not off for: `● on`, `○ read (inline) | runs only`. */
 export function renderFooter(reading: FooterReading): string {
   // An inline session records (the agent does) even while a cached reading from before `/probe inline` says `read`.
   const recording = reading.tracking || Boolean(reading.inline);
