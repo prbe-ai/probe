@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.630.0
+
+- **MCP decisions view: a decision too big for a small token budget is read in pieces again.** A dated read
+  with over 500 matches carried the route's ~240-character page cursor in every piece's cursor, so at
+  `token_budget: 512` no piece fit and the read failed with "Request metadata exceeds this budget". Reads
+  with ISO dates no longer carry anything extra; a span like `7d` carries only its resolved dates, plus the
+  next page's cursor only when the whole page can be sent at once.
+
 ## 0.629.0
 
 - No user-facing changes.
