@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.627.0
+
+- **`npx -y probe-research node ...`: the node daemon from npx.** `node pod -- <cmd>` wraps a job in a
+  container (Modal, Daytona, a Kubernetes pod) and exits with the job's exit code; `node selftest` checks a
+  machine; `sudo -E npx -y probe-research node install` installs the host service. The launcher downloads
+  the probe-node binary for the machine from the public release, refuses it unless its sha256 matches the
+  release's `SHA256SUMS`, keeps it for the next start, and runs it. No `probe`, uv or Python is involved.
+- **probe-node: GPUs that become usable after the daemon starts are picked up.** A GPU node whose driver
+  was still installing when the daemon started (every fresh GKE GPU node, autoscaled and Spot ones
+  included) used to report no GPUs until the daemon restarted; it now retries NVML every 30 s and the next
+  report carries the GPUs.
+- **probe-node: reports from images with no CA bundle.** Slim and distroless images (`node:*-slim`,
+  `debian:*-slim`, a bare Modal or Daytona image) have no system root certificates, so the daemon could not
+  verify the API's TLS and reported nothing while the job ran normally. It now carries Mozilla's roots as a
+  fallback, used only when the system has none.
+- **probe-node Helm chart: GKE values tolerate every taint.** `values-gke.yaml` tolerated only GKE's
+  `nvidia.com/gpu` taint, so a GPU pool with a taint of its own (Spot, a reservation or team pool) was
+  silently skipped. The driver directory is now mounted with `HostToContainer` propagation.
+- **probe-node pod mode on Modal: the job's run is read again.** Modal runs containers under gVisor, where
+  NVML names every GPU process pid 1; the job's `PROBE_RUN_ID` was never read and the GPU showed an untracked
+  `dumb-init`. In pod mode an NVML pid 1 now reads as the wrapped job (verified on a Modal T4).
+- **`probe run send RUN pause` and `resume`.** A job holds at its next step (GPUs kept) until resumed or stopped.
+  The HF Trainer (and TRL), Lightning, verl, SkyRL, ART (its event loop goes on) and a Harbor job take it on their
+  own; a plain loop calls `run.on(CommandKind.PAUSE)` and holds in `run.log()`. Miles does not take it yet. A job
+  joining or requeued onto a paused run adopts it as live.
+
 ## 0.626.0
 
 - **Long decision lists now page all the way through.** An entity's `decisions` view with more than
