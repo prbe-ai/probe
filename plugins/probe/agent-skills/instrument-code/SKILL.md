@@ -194,10 +194,13 @@ commit it to the team's repo; a change in your own job's files or an uncommitted
 checkout records only your jobs. The launcher wraps each submit in `probe exec
 --detached-launcher --project <slug>` (it opens the run and gives the job a token
 for that run alone; name the project, since a teammate's shell has no session
-project; a job that tests a question adds `--experiment <slug>`, since the job
-joins the run the launcher opened) and passes `PROBE_RUN_ID`, `PROBE_RUN_EPOCH` and `PROBE_TOKEN` into the
-job's environment. One run per job: the ranks of one distributed job share it, but
-a submit that starts several independent jobs (an array, seeds) needs one per job
+project) and passes `PROBE_RUN_ID`, `PROBE_RUN_EPOCH` and `PROBE_TOKEN` into the
+job's environment. A job that tests a question also gets `--experiment <slug>`,
+taken from that submit (an argument or an environment variable, never fixed in
+the launcher) and naming an experiment that already exists in that project
+(`probe exec` never creates one): the job joins the launcher's run, so an
+experiment named only in its script never applies. One run per job: the ranks of one distributed job share
+it, but a submit that starts several independent jobs (an array, seeds) needs one per job
 (below). The launcher first runs `probe whoami`; where that fails (not installed,
 not signed in, server down) it submits the plain way with `PROBE_MODE=disabled` in
 the job's environment (an instrumented script without a token raises) and says so
