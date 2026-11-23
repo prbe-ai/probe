@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.626.0
+
+- **Long decision lists now page all the way through.** An entity's `decisions` view with more than
+  1,000 decisions used to show the first 1,000 again and again; it now goes on from the server's own
+  cursor and ends cleanly. `browse(mode="decisions")` and the view keep the dates a relative window
+  (`7d`) worked out to on the first page, so later pages no longer lose their place. On a server too
+  old for paging, `probe decision list --limit` or `--cursor` now prints the one-line upgrade notice
+  instead of listing every decision.
+
 ## 0.625.0
 
 - **RL samples carry each turn's tokens and the tools the model was offered.** Harbor reads each ATIF agent step's
