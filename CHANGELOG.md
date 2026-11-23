@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.629.0
+
+- No user-facing changes.
+
 ## 0.628.0
 
 - **MCP decisions view: a first page sent in pieces reads to the end.** When a page went out as fragments
