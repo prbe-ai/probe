@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.623.0
+
+- No user-facing changes.
+
 ## 0.622.0
 
 - **Agents can ask why work changed, by place, subject, day and words.** `probe decision list` takes
