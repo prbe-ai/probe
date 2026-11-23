@@ -507,6 +507,7 @@ from probe import CommandKind
 run.on(CommandKind.CHECKPOINT, lambda: save_checkpoint())        # return the artifact id
 run.on(CommandKind.CONFIG, lambda values: set_lr(values["lr"]))  # then recorded on run.config
 run.on(CommandKind.STOP, lambda: trainer.request_stop())         # graceful; `stop --force` signals the process
+run.on(CommandKind.PAUSE)  # no handler: run.log() holds while paused, until resume or stop (log once per step)
 
 class TrainerCommand(StrEnum):
     EVAL_NOW = "eval_now"
@@ -518,7 +519,8 @@ A kind is an enum member, never a string. An ask the script registered nothing f
 refused at once, with why; `probe run commands RUN` lists what it accepts now and what
 was asked and answered.
 
-The HF Trainer callback does checkpoint, config (`lr`) and stop for you; with Lightning add
+The HF Trainer callback does checkpoint, config (`lr`), stop and pause for you (verl, SkyRL, ART and a
+Harbor job pause too); with Lightning add
 `ProbeCommands()` (`probe.integrations.lightning_commands`) beside `ProbeLogger`. A plain
 script on several processes calls `probe.commands.sync()` on every rank at the same point
 (every N steps), or its asks are refused: a save or an LR change must happen on every rank.
