@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.642.0
+
+- **An inline agent records the paper you name.** track-work's Papers rule now comes first in the inline skills, with the notice, and says when to act: a paper the researcher names, links, wants to try or cites is recorded on its project that turn, before the answer. It used to arrive only after two more tool calls, so a question answered in a turn or two never reached it.
+
 ## 0.641.0
 
 - No user-facing changes.
