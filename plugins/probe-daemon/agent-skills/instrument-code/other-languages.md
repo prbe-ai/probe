@@ -263,7 +263,7 @@ Body:
 | field | type | required | limits |
 |---|---|---|---|
 | `slug` | string | yes |  |
-| `kind` | `training` \| `evaluation` \| `research` \| `general` \| `experiment` | yes |  |
+| `kind` | `training` \| `evaluation` \| `general` \| `experiment` | yes |  |
 | `description` | string | no | max length 2000 |
 
 Answer `201`, of which you need:

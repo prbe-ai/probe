@@ -252,17 +252,20 @@ Two doors for a metric you thought of after the run finished:
 
 ## 5. PAPERS
 
-`probe paper add PROJECT "TITLE"` on a `research` project; then `list`,
+`probe paper add PROJECT "TITLE"` on the project it serves; then `list`,
 `update`, `tag`, `remove`, `edges`.
 
 | flag | what goes in it |
 |---|---|
 | `--source` | REQUIRED - url or local path (`--url` is an alias) |
+| `--relevance` | why it matters to THIS project, one line of at most 15 words; omitted, Probe writes one |
 | `--authors` | free text, "Vaswani et al." |
 | `--repo` | the repository read alongside the paper |
 | `--summary` | the main idea in YOUR words (`@file.md` works) |
 | `--discrepancies` | what the repo does that the paper does not say: censored code, a missing ablation, a contradicted hyperparameter (`@file.md` works) |
 | `--tag` | one concept, repeatable - the axis a forty-paper review gets grouped on |
+| `--via` | the paper id you followed to this one, or `none`; omit only if you truly can't say |
+| `--via-reason` | one sentence on why that paper led here |
 | `--relates-to` | an earlier paper's id, or `none` |
 | `--relates-reason` | REQUIRED with a paper id |
 | `--relates-provenance` | `inferred` (the default: your judgment) or `human` (the researcher said so) |
@@ -279,7 +282,7 @@ Two doors for a metric you thought of after the run finished:
 Amend, never re-add:
 
 - `paper update` leaves omitted fields alone; `""` clears any field but
-  `--title` and `--source`.
+  `--title` and `--source` (a cleared `--relevance` is rewritten by Probe).
 - `paper tag <id> <concept>` adds, `--remove` drops, `--set` replaces.
 - `paper list <project> [--tag <concept>] [--limit 50]` reads newest first;
   `--tag` requires ALL of them. `paper edges <project>` reads the chain

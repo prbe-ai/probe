@@ -67,7 +67,6 @@ Create both first, each with `--name "<plain title>"`; `run start` never creates
 |---|---|
 | `training` | weights MOVE: pretraining, SFT, RL |
 | `evaluation` | weights don't: evals, sweeps, ablations. A sweep is an experiment, not a project. |
-| `research` | lit reviews, design, theory; a review feeding training sits beside it |
 | `general` | anything else |
 | `experiment` | one question (`--question`) under one of the above; holds runs; its answer is `--conclusion` |
 
@@ -144,9 +143,12 @@ A link points from the newer thing to what it came from.
 
 ## Papers
 
-Log every paper read onto the `research` project, during the review and at the end. `paper list <project>` first (no dedupe); amend with `paper update`. Flags: reference §5.
-
-`probe paper add <project> "<title>" --source <url> --summary "<the idea, in your words>" --tag <concept>`; tags are concepts, never authors. Always answer `--via`: the paper you followed (with `--via-provenance observed_call|provider_citation|human|inferred` and `--via-reason`), `none` if you came directly, omit only if you truly can't say. Always answer `--relates-to` too: the earlier paper in this project the new one connects to, with `--relates-reason` saying in one or two sentences how the two relate, or `none` for the project's first paper. Pick by what the papers say, never by which paper was added last; answer now, not after a compaction.
+A paper is one the researcher or you read, cite or build on for the ML work. Record each as it comes up with `probe paper add` (reference §5), on the project it serves; there are no research projects. `paper list <project>` first (no dedupe); amend with `paper update`.
+- Relevance: why it matters to this project, one plain line of at most 15 words.
+- Summary: the idea, in your words. Tags: concepts, never authors.
+- How you got to it: the paper you followed, or none. Answer now, not after a compaction.
+- Which earlier paper in this project it connects to, and how; none for the first. Pick by what the papers say, never the paper added last.
+- A paper serving two projects goes on each, with each project's line.
 
 ## Evidence
 
