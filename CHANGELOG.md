@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.638.0
+
+- No user-facing changes.
+
 ## 0.637.0
 
 - MCP decisions view: pages after the first stop carrying the first page's saved window in their cursor. A `since: 7d` read at a small token budget no longer fails now and then with "Request metadata exceeds this budget", and it takes about 40% of the calls it did.
