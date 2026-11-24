@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.634.0
+
+- **A job attaches to a run that reads Pending.** `probe.init()` inside a job whose run waited in a cluster queue
+  (status `pending`, D23) starts it exactly as it starts a `created` one, and the generated models know the new
+  status. `probe exec -- sbatch ...` now submits with `--comment=PROBE_RUN_ID=<run id>`, after the job's own
+  comment when it has one (on the command line or in the script's `#SBATCH --comment`): Slurm shows a waiting
+  job's comment but never its environment, so this is what lets the queue name the run. The probe-node daemon
+  learns `--queues slurm,kubernetes` (`$PROBE_NODE_QUEUES`): it reports jobs waiting with a `PROBE_RUN_ID` so their
+  runs read Pending. On Kubernetes one daemon pod reads for the cluster (the lowest-named Ready one, so a dead node hands over within about 2 min), each pod's job id is its UID, and chart value `queue.namespaces` limits
+  it to named namespaces.
+
 ## 0.633.0
 
 - **MCP transcripts show the day.** The session `transcript` view prints a `── YYYY-MM-DD ──` line before the line where each UTC day starts, a page or grep section that starts mid-day opens with the day it is in, and the reply lists the days with their lines in `days`, so `start_line` jumps straight to one. `line`, `line_start`, `line_end` and cursors still count the transcript's own lines only. Sessions without day marks read exactly as before. The `since` docs on `browse` and `search` now point there for what happened on a day.
