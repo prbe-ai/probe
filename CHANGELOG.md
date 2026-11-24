@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.635.0
+
+- **probe-node: a remote command over ssh no longer counts as someone using the machine.** The activity block counted every `sshd: user@notty` process as an interactive session, so the session an agent's `ssh box "nohup python train.py &"` leaves open (no child once the job is reparented) blocked `probe compute job stop` as "someone is using" the node, and `ssh box probe-node spindown-scan` always reported its own session as BUSY. A no-terminal session now counts only while it runs something (VS Code Remote's server still counts) and never when it is the scan's own; OpenSSH 9.8+ `sshd-session` terminals are counted too.
+- **`probe compute job show` reports the job's own GPU utilization.** It looked the GPU up by node hostname, and every Modal container is `modal`, so it could print another container's stale 100% for an idle job.
+- **`probe run get id:<uuid>` reads the run.** The `id:` spelling the agent rules teach used to answer "run not found" on `probe run get` and `probe get`, while the bare uuid worked; both spellings now read the same run.
+
 ## 0.634.0
 
 - **A job attaches to a run that reads Pending.** `probe.init()` inside a job whose run waited in a cluster queue
