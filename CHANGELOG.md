@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.644.0
+
+- **Fewer false hook timeout reports, and Probe is ready sooner after a restart.** Claude Code's background "wake me if Probe has a message" wait no longer counts as a hook timeout: nobody waits on it, and it was 21 of the last 72 reports. After a restart or an update while agents are running, Probe prepares its hook routes and helpers right away instead of at their next tool call, and updates install precompiled code, so the first tool calls after an update start faster. Every timeout report now says which step was slow (waiting its turn, preparing, starting, or running) and how long the service had been up.
+
 ## 0.643.0
 
 - **`probe ask` says what the Probe daemon is really doing when it is not running.** It used to promise a restart at the next prompt; it now says whether the daemon is starting, when Probe tries it again, that an update is running, or that nothing will start it (with `probe doctor`), and starts the Probe service when it does not answer.
