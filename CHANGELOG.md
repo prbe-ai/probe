@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.641.0
+
+- No user-facing changes.
+
 ## 0.640.0
 
 - **write-pane no longer mentions research projects.** The research project kind is gone (papers
