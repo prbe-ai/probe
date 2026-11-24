@@ -16,8 +16,7 @@ per run, per config or per group (a leaderboard, by a config, or by a group such
 is a table or chart in the Metrics-center visuals of the experiment whose runs recorded it
 (`overview-visuals`); the project page shows each experiment's charts too. A pane
 is for whatever important data is left, chart or not: for example each frame's score under two
-models, before/after images, the PDFs a run wrote, why tasks did not finish. A research project and
-its experiments carry no charts: scored runs belong in an evaluation, training or general project.
+models, before/after images, the PDFs a run wrote, why tasks did not finish.
 
 A score per group that no run has logged yet is still a built-in chart:
 
