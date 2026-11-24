@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.643.0
+
+- **`probe ask` says what the Probe daemon is really doing when it is not running.** It used to promise a restart at the next prompt; it now says whether the daemon is starting, when Probe tries it again, that an update is running, or that nothing will start it (with `probe doctor`), and starts the Probe service when it does not answer.
+
 ## 0.642.0
 
 - **An inline agent records the paper you name.** track-work's Papers rule now comes first in the inline skills, with the notice, and says when to act: a paper the researcher names, links, wants to try or cites is recorded on its project that turn, before the answer. It used to arrive only after two more tool calls, so a question answered in a turn or two never reached it.
