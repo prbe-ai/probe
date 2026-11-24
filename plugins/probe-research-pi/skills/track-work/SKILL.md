@@ -81,6 +81,15 @@ Create both first, each with `--name "<plain title>"`; `run start` never creates
 - A project's description comes from its summary's first line.
 - Pass `--project`; `project use` is machine-wide.
 
+## Papers
+
+When the researcher names or links a paper they read, want to try or cite for the ML work, or you read one for it, record it that turn, before you answer: `probe paper add PROJECT "TITLE" --source URL --relevance "<line>"` (reference §5), on the project it serves; there are no research projects. `paper list <project>` first (no dedupe); amend with `paper update`.
+- Relevance: why it matters to this project, one plain line of at most 15 words.
+- Summary: the idea, in your words. Tags: concepts, never authors.
+- How you got to it: the paper you followed, or none. Answer now, not after a compaction.
+- Which earlier paper in this project it connects to, and how; none for the first. Pick by what the papers say, never the paper added last.
+- A paper serving two projects goes on each, with each project's line.
+
 ## Run
 
 Every run needs an owner that keeps it alive:
@@ -145,12 +154,3 @@ A link points from the newer thing to what it came from.
 5. Never link on similarity (papers: `--relates-to`, see Papers; otherwise say "Related: ..." in a note), to what it's filed under, to itself, or twice.
 6. Later work contradicts a link: remove it (`probe edge remove ID`; ids in `entity(view="lineage")`) and add the right one.
 7. Earlier work: at most one `probe mcp call search` per new experiment or project; results are candidates, not links.
-
-## Papers
-
-A paper is one the researcher or you read, cite or build on for the ML work. Record each as it comes up with `probe paper add` (reference §5), on the project it serves; there are no research projects. `paper list <project>` first (no dedupe); amend with `paper update`.
-- Relevance: why it matters to this project, one plain line of at most 15 words.
-- Summary: the idea, in your words. Tags: concepts, never authors.
-- How you got to it: the paper you followed, or none. Answer now, not after a compaction.
-- Which earlier paper in this project it connects to, and how; none for the first. Pick by what the papers say, never the paper added last.
-- A paper serving two projects goes on each, with each project's line.
