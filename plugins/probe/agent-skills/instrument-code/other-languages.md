@@ -294,7 +294,7 @@ Answer `201`, of which you need:
 | `id` | string (uuid) | yes |  |
 | `slug` | string | no |  |
 | `name` | string | yes |  |
-| `status` | `created` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | yes |  |
+| `status` | `created` \| `pending` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | yes |  |
 
 ### `POST /v1/runs/{run_ref}/heartbeat`: say the run's process is alive
 
@@ -308,7 +308,7 @@ Answer `200`, of which you need:
 
 | field | type | required | limits |
 |---|---|---|---|
-| `status` | `created` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | yes |  |
+| `status` | `created` \| `pending` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | yes |  |
 
 ### `POST /v1/runs/{run_ref}/metrics`: record metric points
 
@@ -357,7 +357,7 @@ Body:
 
 | field | type | required | limits |
 |---|---|---|---|
-| `status` | `created` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | no |  |
+| `status` | `created` \| `pending` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | no |  |
 | `ended_at` | string (date-time) | no |  |
 | `summary_metrics` | object | no |  |
 
@@ -365,7 +365,7 @@ Answer `200`, of which you need:
 
 | field | type | required | limits |
 |---|---|---|---|
-| `status` | `created` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | yes |  |
+| `status` | `created` \| `pending` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | yes |  |
 
 ### Trace limits
 
