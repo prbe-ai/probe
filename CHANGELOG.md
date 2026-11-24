@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.637.0
+
+- MCP decisions view: pages after the first stop carrying the first page's saved window in their cursor. A `since: 7d` read at a small token budget no longer fails now and then with "Request metadata exceeds this budget", and it takes about 40% of the calls it did.
+
 ## 0.636.0
 
 - **A paused run shows the step it is holding at.** A pause now holds only after that step's metrics are sent: `run.log()` (and so verl and SkyRL) after its row, the Hugging Face `Trainer` (and TRL) after the step's log, eval and epoch end, and Lightning at the batch end once Probe has sent that batch's row. Before, the run page showed one step behind for as long as the run stayed paused. A stop asked while paused ends the run at the held step. A checkpoint asked while paused saves the held step: Lightning writes it during the pause, and the Hugging Face `Trainer` writes it once the run resumes. With the Hugging Face `Trainer`, the run reads paused while that step's eval finishes.
