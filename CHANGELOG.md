@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.633.0
+
+- **MCP transcripts show the day.** The session `transcript` view prints a `── YYYY-MM-DD ──` line before the line where each UTC day starts, a page or grep section that starts mid-day opens with the day it is in, and the reply lists the days with their lines in `days`, so `start_line` jumps straight to one. `line`, `line_start`, `line_end` and cursors still count the transcript's own lines only. Sessions without day marks read exactly as before. The `since` docs on `browse` and `search` now point there for what happened on a day.
+
 ## 0.632.0
 
 - **Experiment: Probe compute messages and directives reach the agent with their sender.** The daemon's poll declares `X-Probe-Inbox-Kinds: compute`; a message reads "[Probe] Message from Probe compute (about <the GPU job>)", "... Probe compute, on behalf of your organization's admins ..." or "... Probe compute directive, on behalf of your organization's admins ...", never as the owner's own agent session. When the team's admins turned directives on, the SessionStart hook adds one fixed standing line. Hidden `probe compute job stop <stint>` is the guarded last step a directive allows: only a running job of this session, refused for a SLURM/Kubernetes job and for a process that is no longer that job (pid + start ticks), SIGTERM, `--grace`, SIGKILL, through `PROBE_COMPUTE_JOB_ADAPTER`, confirmed on the compute API; allowed in daemon-profile sessions. Inert unless the server's experiment switch is on.
