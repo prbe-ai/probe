@@ -545,6 +545,24 @@ def test_a_session_deleted_before_any_claim_says_so(setup, monkeypatch):
     assert {"text": hosted.WAITING_DELETED, "other": None} in waited and waited[-1] is None
 
 
+@pytest.mark.parametrize("setup", ["hosted", "watch"], indirect=True)
+def test_off_by_its_own_check_before_any_claim_says_so(setup, monkeypatch):
+    """The loop's own gate says off before anything of it was staged: no claim, and it says why
+    (the service's row may not say `off`), never a silent idle recorder."""
+    config, storage, wire = setup
+    waited = []
+    config.waiting = waited.append
+
+    def no_receipts(*_args, **_kwargs):
+        raise AssertionError("off before any claim: nothing is asked of the server")
+
+    monkeypatch.setattr(wire, "receipts", no_receipts)
+    monkeypatch.setattr(tapmain.capture_gate, "verdict", lambda _sid: tapmain.capture_gate.Verdict(True, []))
+    monkeypatch.setattr(tapmain.time, "sleep", lambda _seconds: _stop_loop(config))
+    assert tapmain._run_durable_loop(config, storage) == 0
+    assert waited[0] == {"text": hosted.WAITING_OFF_HERE, "other": None}
+
+
 def test_the_waiting_lines_are_the_ones_the_service_and_the_server_read():
     """Pinned: the service builds `last` from these, and the server's bug report
     (`app/ops/diagnostics/manual_report.py`) knows their beginnings."""
@@ -553,6 +571,7 @@ def test_the_waiting_lines_are_the_ones_the_service_and_the_server_read():
     assert hosted.WAITING_LOCAL == "cannot use its local storage"
     assert hosted.WAITING_INGESTION_OFF == "Probe ingestion is off"
     assert hosted.WAITING_DELETED == "deleted at the customer's request"
+    assert hosted.WAITING_OFF_HERE == "Probe is off for it by its own check"
     controls = hosted.Controls()
     assert controls.waiting is None
     controls.set_waiting({"text": hosted.WAITING_INGESTION_OFF, "other": None})
