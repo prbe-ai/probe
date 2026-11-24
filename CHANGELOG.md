@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.640.0
+
+- **write-pane no longer mentions research projects.** The research project kind is gone (papers
+  live on the project they serve), so the skill drops its "a research project carries no charts" line.
+
 ## 0.639.0
 
 - **Papers carry why they matter, and research projects are gone.** `probe paper add` and `paper update` take `--relevance`: one line, at most 15 words, on why the paper matters to its project (the server writes one when you leave it out; `--relevance ""` asks for a new one). `project create` and `project move` offer training, evaluation and general; `research` is still accepted and becomes `general`. The SDK's `add_paper` and `update_paper` take `relevance`, and the track-work skill teaches agents to record each paper they read, cite or build on, with its line, on the project it serves.
