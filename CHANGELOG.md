@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.639.0
+
+- **Papers carry why they matter, and research projects are gone.** `probe paper add` and `paper update` take `--relevance`: one line, at most 15 words, on why the paper matters to its project (the server writes one when you leave it out; `--relevance ""` asks for a new one). `project create` and `project move` offer training, evaluation and general; `research` is still accepted and becomes `general`. The SDK's `add_paper` and `update_paper` take `relevance`, and the track-work skill teaches agents to record each paper they read, cite or build on, with its line, on the project it serves.
+
 ## 0.638.0
 
 - No user-facing changes.
