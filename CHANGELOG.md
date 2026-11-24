@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.636.0
+
+- **A paused run shows the step it is holding at.** A pause now holds only after that step's metrics are sent: `run.log()` (and so verl and SkyRL) after its row, the Hugging Face `Trainer` (and TRL) after the step's log, eval and epoch end, and Lightning at the batch end once Probe has sent that batch's row. Before, the run page showed one step behind for as long as the run stayed paused. A stop asked while paused ends the run at the held step. A checkpoint asked while paused saves the held step: Lightning writes it during the pause, and the Hugging Face `Trainer` writes it once the run resumes. With the Hugging Face `Trainer`, the run reads paused while that step's eval finishes.
+
 ## 0.635.0
 
 - **probe-node: a remote command over ssh no longer counts as someone using the machine.** The activity block counted every `sshd: user@notty` process as an interactive session, so the session an agent's `ssh box "nohup python train.py &"` leaves open (no child once the job is reparented) blocked `probe compute job stop` as "someone is using" the node, and `ssh box probe-node spindown-scan` always reported its own session as BUSY. A no-terminal session now counts only while it runs something (VS Code Remote's server still counts) and never when it is the scan's own; OpenSSH 9.8+ `sshd-session` terminals are counted too.
