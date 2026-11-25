@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.646.0
+
+- **`probe.init(run_type=..., key_metrics=[...])` pins the charts a run's page shows first.** The names (`[kind:]key`, at most 12) fill the project's pinned list for the run type unless a person saved one; `Client.run` takes the same argument. Without `run_type` nothing is pinned and one warning says why. The pin never holds the run's metrics and never stops training. The `instrument-code` skill lists the recommended metrics for SFT, RL and other runs.
+
 ## 0.645.0
 
 - **An idle recorder always says why.** A recorder that holds no claim because its own check says Probe is off for the chat now says so, and one whose first pass never takes its chat says that once its start-up grace is over, so `probe doctor` and its report no longer show a recorder "running but not recording" with no reason.
