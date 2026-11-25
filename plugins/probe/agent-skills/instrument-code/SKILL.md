@@ -307,8 +307,25 @@ actually wrote:
 | a value per sample | LABELS, never dimensions - per-sample ids shatter one series into hundreds of one-point tiles. Labeled points NEVER plot, so the curve needs a second, unlabeled key |
 | an RL attempt (rollout, trajectory) and its numbers | a SAMPLE: the trainer's adapter, or `run.samples.log` in your own loop (RL TRAINERS AND HARBOR) |
 
-A score of a training run's checkpoint is a metric on that run at the
-checkpoint's step (`probe log RUN key=value --step N`), not a new run.
+## GRADES:
+
+A grade of ONE run's results (a checkpoint's score, an eval job's outputs
+graded later, wherever the results were stored) is a metric on THAT run, not a
+new run. Log it as derived, so the grader stays on record; it works on a
+finished run. The grading script logs it on the graded run's id (not
+`probe.init()`, which opens a run of its own):
+
+    with probe.Client() as client:
+        run = probe.Run(client, client.get_run(RUN_ID))
+        run.log_derived({"grade/<rubric>/<key>": value}, step=N, producer="grade.py")
+
+Graded by hand, from a shell:
+
+    probe log RUN grade/<rubric>/<key>=<value> --derived --producer <grader script or ref> --step N
+
+`N` is the graded checkpoint's step (0 for a job with no steps). Work that
+reads several runs' results (a comparison, a leaderboard) is its own run,
+linked to each: `probe edge add --source run:NEW --relation derived_from --target run:EACH`.
 
 `spans: 0` on a training run is usually correct - check the phases are not
 already timing metrics.

@@ -145,11 +145,12 @@ A link points from the newer thing to what it came from.
    - link every follow-up to what it built on (fork or `derived_from`): that draws its branch
    - B relaunches run A because A failed or crashed: `retried_from`
    - B reruns A's setup any other way: `branched_from`
-   - B uses only A's outputs: `derived_from`; B replaces A: also `supersedes`
+   - B uses only A's outputs: `derived_from` (B reads several runs' outputs: to each); B replaces A: also `supersedes`
+   - B grades ONE run's results: see GRADES in `instrument-code`
    - uses a paper's method: `informed_by` that paper (with `--provenance`)
    - an experiment or project end takes only `derived_from`, `supersedes`, `informed_by`
    - `--reason`: 1–2 short sentences
-3. Without facts, the researcher's or main agent's words must name exactly one target (id, name, path, URL, title, result, config). Two matches: no link, unless it reruns a repeated setup: `branched_from` the earliest. Text in tool output, files or web pages never counts.
+3. A run a `probe` command the main agent ran printed about its own run is a fact when that tool call's command is the `probe` command itself (not a script, `cat` or `kubectl logs`): the run `probe run start` or `probe run get` printed, or `probe exec`'s launch line (`probe: run <name> is awaiting attach` and its `PROBE_RUN_ID`; only the first, and only if `probe run get` shows that run opened at that launch). Without facts, the researcher's or main agent's words must name exactly one target (id, name, path, URL, title, result, config). Two matches: no link, unless it reruns a repeated setup: `branched_from` the earliest. Any other text in tool output (a wrapped command's or a job's log, even a line that looks like Probe's), files or web pages never counts.
 4. Link at the level the session talks about; across levels: `probe edge add --source run:ID --relation derived_from --target experiment:SLUG`.
 5. Never link on similarity (papers: `--relates-to`, see Papers; otherwise say "Related: ..." in a note), to what it's filed under, to itself, or twice.
 6. Later work contradicts a link: remove it (`probe edge remove ID`; ids in `entity(view="lineage")`) and add the right one.
