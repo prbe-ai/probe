@@ -31,6 +31,24 @@ probe.finish()
 
 Always say what the run is when you create it (`run_type`): `sft` for supervised fine-tuning, `rl` for RL training or an agent eval, `general` for anything else. A run that does not say reads as Other: Probe never guesses it.
 
+## PIN THE RUN'S KEY METRICS:
+
+Pinned metrics are the charts a run's page shows first, one list per project per run type. Pass the names your
+script logs for these, in this order, with `run_type` (`[kind:]key` each, at most 12; a key holding a colon is
+written `model:<key>`):
+
+- `sft`: loss, grad norm, learning rate, eval loss
+- `rl`: train reward, eval reward, entropy, error rate
+- `general` (Other): loss, eval loss, reward, kl
+
+```python
+probe.init(project="folding", run_type="sft",
+           key_metrics=["train/loss", "train/grad_norm", "train/learning_rate", "eval/loss"])
+```
+
+It fills the project's list for that type unless a person saved one (theirs always wins). Without `run_type`
+nothing is pinned (one warning). Other languages: `PUT /v1/runs/{run_ref}/key-metrics` (`other-languages.md`).
+
 Pass the run's whole config object as is - `args`, a Hydra `DictConfig` (never a
 resolved copy), a dataclass or a dict - not a few picked keys. Keep credentials
 out of it. A trainer integration that already records config needs none.

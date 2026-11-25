@@ -9,7 +9,8 @@ use it there. Build a small client in the program's own language from this page,
 1. Sign in (below), then find the project by its slug (lowercase words joined by `-`); create it,
    with a `kind` (`general` when unsure), when none has it. A `409` on that create means another
    process made it first: find it again.
-2. Create the run once, with a `creation_key`.
+2. Create the run once, with a `creation_key` and its `run_type`. To pin its key metrics (`SKILL.md`),
+   `PUT /v1/runs/{run_ref}/key-metrics` once after the create; `applied: false` means a person's list stands.
 3. Heartbeat once the run exists, then every 60 s until the run ends.
 4. Send metric points and agent calls as they happen. Every metrics `POST` carries
    `X-Probe-Async-Ack: 1` (below).
@@ -286,6 +287,7 @@ Body:
 | `tags` | array of string | no |  |
 | `heartbeat` | boolean | no | default `false` |
 | `source` | string | no | default `"api"` |
+| `run_type` | `general` \| `sft` \| `rl` | no |  |
 
 Answer `201`, of which you need:
 
@@ -295,6 +297,28 @@ Answer `201`, of which you need:
 | `slug` | string | no |  |
 | `name` | string | yes |  |
 | `status` | `created` \| `pending` \| `running` \| `completed` \| `failed` \| `crashed` \| `canceled` \| `paused` \| `untracked` | yes |  |
+
+### `PUT /v1/runs/{run_ref}/key-metrics`: pin the run type's key metrics, once (needs `run_type`)
+
+Body:
+
+| field | type | required | limits |
+|---|---|---|---|
+| `key_metrics` | array of `ScriptKeyMetricIn` | yes | min items 1; max items 12 |
+
+Each `ScriptKeyMetricIn`:
+
+| field | type | required | limits |
+|---|---|---|---|
+| `kind` | string | yes | min length 1 |
+| `key` | string | yes | min length 1 |
+
+Answer `200`, of which you need:
+
+| field | type | required | limits |
+|---|---|---|---|
+| `applied` | boolean | yes |  |
+| `run_type` | `general` \| `sft` \| `rl` | yes |  |
 
 ### `POST /v1/runs/{run_ref}/heartbeat`: say the run's process is alive
 
