@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.649.0
+
+- **`probe compute connect` gives a team with no queue a SkyPilot one.** A team with no SLURM and no SkyPilot API
+  server is offered `skypilot@<cluster>`: SkyPilot 0.14.3's API server, installed with its official Helm chart
+  into the team's Kubernetes (plus the probe-node DaemonSet if missing), or onto one VM over ssh. It ships Probe's
+  policy and plugin, so `sky jobs launch --env PROBE_PROJECT=<project>` opens a Probe run. Auth is always on
+  (basic auth, user `admin`); jobs get no Kubernetes credential and no uploaded cloud key; the server's
+  `runs:submit` key (one browser approval) and the queue reader's enrollment are kept in the server's own
+  namespace, never where jobs run. `probe compute disconnect` removes exactly what it added and revokes the key
+  and the queue reader's enrollment. New flags: `--skypilot-values`, `--skypilot-sso`, `--skypilot-probe-package`.
+- **The SkyPilot policy no longer sends an owner hint.** A run's SkyPilot user is a label only; behind SSO the
+  label is marked `sso`.
+- **A `compute-setup` skill, shown only to the people its flag allows.** It teaches an agent to connect a
+  team's GPU machines or cluster with `probe compute connect` (dry run, the person's yes, then connect; check
+  with `probe compute clusters`), and that an admin uninstalls from the dashboard. It ships in the plugins' new
+  `gated-skills/` folder, which no plugin manifest names: the session-start skill sync copies it into Claude
+  Code's skills folder only while `~/.local/state/probe/gated-skills.json` (the server's answer, kept at sign-in
+  and refreshed hourly by the daemon's poll) names it, and removes our copy otherwise. No answer, an unreadable
+  or week-old one, or signing out means no skill.
+- **`probe exec` knows SkyPilot, and teams get a SkyPilot policy.** `probe exec -- sky jobs launch` (also `sky launch`,
+  `sky exec`) opens the run and passes it to the job as `--env PROBE_RUN_ID --env PROBE_RUN_EPOCH --env PROBE_PROJECT
+  --secret PROBE_TOKEN`. New `probe.shared.skypilot` holds the SkyPilot admin policy
+  (`probe.shared.skypilot.policy.ProbePolicy`) and server plugin (`probe.shared.skypilot.plugin.ProbePlugin`): a plain
+  `sky jobs launch --env PROBE_PROJECT=<slug>` gets its run from the team's API server, an incoming run is reused,
+  queued job ids are recorded, VM clouds get the probe-node setup line, and any Probe error or a 2 s wait leaves the
+  launch unchanged.
+- **`probe compute job stop` refuses SkyPilot managed jobs.** It names the command that stops one
+  (`sky jobs cancel <id>`): killing the process reads to SkyPilot as a failure it may retry.
+- **`probe-node run --mode queue --queues skypilot`** reads the SkyPilot API server it runs beside, over
+  loopback, and reports its managed jobs; `probe compute connect` adds it to the server's pod.
+
 ## 0.648.0
 
 - **probe-node (experiment): the idle scan on request.** With `PROBE_NODE_ACTIVITY=1`, when the server's report ack asks for it (an idle alert just fired on a host install), probe-node runs its read-only `spindown-scan` once for that alert, off the report loop, and attaches the result (`POST /v1/nodes/{id}/idle-scan`), so the idle email can say what unsaved work is on the machine. Nothing is ever stopped.
