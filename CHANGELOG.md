@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.647.0
+
+- **Releases no longer stall on a full PyPI project.** Before each release, the CLI project keeps exactly its newest 30 releases (and 0.480.0) and deletes every older one, instead of keeping any old version the repo's text happens to name. If a project is still over its limit, the oldest of its newest releases go too (never the newest 5), with a warning.
+
 ## 0.646.0
 
 - **`probe.init(run_type=..., key_metrics=[...])` pins the charts a run's page shows first.** The names (`[kind:]key`, at most 12) fill the project's pinned list for the run type unless a person saved one; `Client.run` takes the same argument. Without `run_type` nothing is pinned and one warning says why. The pin never holds the run's metrics and never stops training. The `instrument-code` skill lists the recommended metrics for SFT, RL and other runs.
