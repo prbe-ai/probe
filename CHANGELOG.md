@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.648.0
+
+- **probe-node (experiment): the idle scan on request.** With `PROBE_NODE_ACTIVITY=1`, when the server's report ack asks for it (an idle alert just fired on a host install), probe-node runs its read-only `spindown-scan` once for that alert, off the report loop, and attaches the result (`POST /v1/nodes/{id}/idle-scan`), so the idle email can say what unsaved work is on the machine. Nothing is ever stopped.
+- **probe-node: remote uninstall, and `probe-node uninstall`.** When an admin removes a machine or cluster from Probe's dashboard, probe-node removes itself at its next report and tells Probe it is done: a host install removes its systemd unit, binary and `/var/lib/probe-node`; on Kubernetes every pod empties its state dir and, when the whole cluster was asked, one pod (holding a Lease) deletes the release: its RBAC, the token Secret it or `probe compute connect` made, Helm's release records, the DaemonSet, and the namespace only when `probe compute connect` created it. The chart's `remoteUninstall.enabled` (default on) grants this by exact object name only. `probe-node uninstall` (and `deploy/uninstall.sh`) do the host removal by hand; the install docs give the `helm uninstall` fallback.
+- **`probe compute job show` says when the job last saved, and `job stop` warns when it did not.** `show` prints
+  `saved: last saved N min ago (a checkpoint on run <name>)`, `never saved` or `unknown` when the job records no
+  Probe run; `stop` prints a note when the run has no checkpoint from the last 30 minutes, then stops as before
+  (the adapter's `--require-saved` is still what refuses unsaved work). A checkpoint is `run.log_artifact` of a
+  `.pt`/`.ckpt`/`.safetensors`/`.pth` file or `kind="checkpoint"`.
+- **probe-node stops retrying an enrollment that can never succeed, and keeps points a 404 or 409 refused.** An
+  enrollment body the server refuses (400/413/422, or one whose instance fields break its bounds on the machine)
+  stops the daemon with the reason instead of retrying forever. Billing labels are the server's call (it refuses
+  a bad one only for a new node); `probe-node selftest` fails an unreadable one. A report answered 404 (node gone) re-enrolls and a 409 retries, both keeping their
+  metric points; only 400/413/422 drop them.
+- **`probe compute connect` tells Probe which GPU machines a Kubernetes cluster has**, and `probe compute clusters` shows machines and GPUs expected against those reporting, with the silent ones by name (`--machines CLUSTER` lists every one). probe-node's queue reader keeps the list current from Kubernetes nodes and Slurm `sinfo` (its chart now grants `list nodes` when `queue.kubernetes` is on).
+- **Pod wrapper job control and token stripping, tightened.** A job suspended with ^Z, resumed with `bg` and brought back with `fg` while still busy gets the terminal again instead of being stopped on its next read. The npm launcher's check for "the terminal already sent this ^C" now reads the controlling terminal rather than stdin, so `< /dev/null` no longer doubles a ^C. On Windows, `PROBE_ENROLL_TOKEN` is stripped from a fallback job's environment whatever its spelling.
+- **The probe-node pod wrapper no longer stops interactive jobs, and the job no longer sees the enrollment token.** On a terminal (`probe-node run --pod -- <cmd>`, `node.sh pod`, `npx -y probe-research node pod`), the job now runs in the terminal's foreground: it reads the terminal without being stopped by SIGTTIN/SIGTTOU, a ^C reaches it exactly once, ^Z and `fg` work as they do without Probe, and the terminal is handed back when it exits. Without a terminal (a pod), nothing changes. `PROBE_ENROLL_TOKEN` is removed from the job's environment on the normal path and on every fail-open path; everything else, including `PROBE_RUN_ID` and the agent session ids, is passed through unchanged.
+- **`npx -y probe-research node pod` keeps the enrollment token from the job and sends a terminal ^C once.** The npm launcher moves to 0.50.0 so the release publishes it: when probe-node cannot be set up and the job runs without it, `PROBE_ENROLL_TOKEN` is removed from the job's environment, and a ^C the terminal already sent to the job is not passed on a second time.
+- **PyPI cleanup emails less and trims sooner.** An expired remembered-device sign-in no longer counts as a quiet one, and the CLI's trim runs in any release where the SDK's cleanup has already signed in.
+
 ## 0.647.0
 
 - **Releases no longer stall on a full PyPI project.** Before each release, the CLI project keeps exactly its newest 30 releases (and 0.480.0) and deletes every older one, instead of keeping any old version the repo's text happens to name. If a project is still over its limit, the oldest of its newest releases go too (never the newest 5), with a warning.
