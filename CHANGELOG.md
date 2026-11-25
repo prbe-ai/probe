@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.650.0
+
+- **Jobs that read and write cloud buckets now record what they read and wrote.** A run that downloads from
+  or uploads to Google Cloud Storage or S3 (R2 and MinIO included) through google-cloud-storage, boto3, gcsfs
+  or s3fs lists each object as one of its reads or writes, with the object's exact version. Later work that
+  reads a job's bucket results, on any machine, can then link back to the job that wrote them. Each version
+  of an object counts separately, nothing is downloaded or hashed to record it, and the same switches and
+  `.probeignore` patterns as for files apply (`PROBE_CAPTURE_READS=0`, `PROBE_CAPTURE_WRITES=0`; a pattern
+  like `private-bucket/` matches by bucket and key). An object named like a credential is never recorded.
+- **`probe run get` shows how a pod job signed in.** The run's `pod_credential` reads `run_token` when the job joined
+  with its run token, `login` when a pod used a person's login, and is empty for runs on a laptop.
+- **Grades land on the job they grade.** When your agent grades one job's results later (a checkpoint's score, an eval's outputs pulled back from a bucket), the grade now goes onto that job's run as a marked, derived metric that names the grader, instead of into a new run linked to nothing. Work comparing several jobs is its own run, linked to each.
+- **Probe's daemon links runs that Probe itself printed.** A run named by `probe exec`'s launch line or by `probe run start` / `probe run get` now counts when the daemon links later work to it. Lines from a job's log, other tools, files or web pages still never do.
+- **A job that records as you from inside a pod gets one heads-up.** When a pod's run opened on a copied laptop login instead of the job's own run token, the daemon tells your agent once, with the fix: launch it through `probe exec --detached-launcher` in the team's launcher.
+
 ## 0.649.0
 
 - **`probe compute connect` gives a team with no queue a SkyPilot one.** A team with no SLURM and no SkyPilot API
