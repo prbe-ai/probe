@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.651.0
+
+- **`probe compute connect` links a SkyPilot server's key to its cluster.** The queue reader's enrollment token
+  now names the server's `runs:submit` key, so removing the cluster from Probe's dashboard revokes the key without
+  the machine that connected it. On Kubernetes the probe-node chart is told the server's names
+  (`remoteUninstall.skypilot`), and the server takes Probe's policy and plugin off its volume once its key is gone.
+- **`probe-node uninstall --include-skypilot`.** On a VM with a SkyPilot server `probe compute connect` set up,
+  `probe-node uninstall` (and a remote uninstall) takes Probe's policy, plugin and keys out of it; with the flag
+  it removes the server too, keeping `/var/lib/probe-skypilot`. `uninstall.sh` is now published with each
+  probe-node release beside `node.sh`.
+
 ## 0.650.0
 
 - **Jobs that read and write cloud buckets now record what they read and wrote.** A run that downloads from
