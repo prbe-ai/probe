@@ -197,6 +197,7 @@ attaches, but that export dies at the machine boundary:
 | Modal | `secrets=[modal.Secret.from_local_environ(["PROBE_RUN_ID", "PROBE_RUN_EPOCH", "PROBE_TOKEN"])]` (local env is not forwarded; never a literal - the snapshot uploads this script) | `modal.Image.debian_slim().pip_install("probe-research")` |
 | Ray | `runtime_env={"env_vars": {...}}`, the same three (Ray's dashboard shows them: only ever a run's own token) | `runtime_env={"pip": ["probe-research"]}` |
 | Slurm | `sbatch --export=ALL,PROBE_TOKEN,PROBE_RUN_ID=...,PROBE_RUN_EPOCH=...` | the venv the job activates |
+| SkyPilot | `probe exec --project <slug> -- sky jobs launch ...` (also `sky launch`, `sky exec`) adds all three itself; a plain `sky jobs launch --env PROBE_PROJECT=<slug>` gets them from the team's Probe policy | `setup: pip install probe-research` |
 | Docker / k8s | `-e PROBE_TOKEN -e PROBE_RUN_ID=...` / `env:` on the pod | the image |
 
 When they are set (the token alone is enough), `probe.init(config=args)` joins the run
