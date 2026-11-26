@@ -28,8 +28,9 @@ reports each machine's GPUs and jobs to Probe). It changes nothing until the per
    ```
    `--yes` stands for the person's yes, so never pass it before they gave one. If it asks for a
    browser approval, tell the person to approve it. A failed step is rolled back; show them the error.
-   If the cluster access is read-only or refused, say what is missing: rights to create a namespace,
-   a Secret and a DaemonSet. Someone who has them runs connect.
+   If the cluster access is read-only or refused, say what is missing: rights to install cluster-wide
+   (a namespace, a Secret, a DaemonSet and cluster roles; in practice cluster-admin). Someone who has
+   them runs connect.
 4. Check: `probe compute clusters` lists the cluster, and `probe compute nodes` lists each machine
    once it reports.
 
