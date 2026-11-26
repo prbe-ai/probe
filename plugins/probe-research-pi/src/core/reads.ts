@@ -92,6 +92,11 @@ export const TEXT_FAILED = "[Probe] Your ask {id} failed: {reason}. No answer is
 /** A partial answer (`partial` on a message with `ask`) and the endings after one (S1). */
 export const TEXT_PARTIAL = "[Probe] Partial answer to your ask {id} - the daemon is still looking; the full answer follows:\n{message}";
 export const NOTHING_MORE = "(the daemon found nothing more)";
+/** A line of a message's sources list, and the longest one (`probe.shared.mailbox.citations`, mirrored):
+ * NOTHING_MORE goes above the list, which stays last. */
+export const SOURCE_LINE_PATTERN = "^(?:\\*\\*)?\\[(\\d{1,2})\\](?:\\*\\*)? *[-–—] *(\\S.{0,119}?) *\\(id:([^\\s()]{1,100})\\)[.,;]?$";
+export const SOURCE_LINE_CHARS = 250;
+const SOURCE_LINE = new RegExp(SOURCE_LINE_PATTERN);
 export const TEXT_NOTHING_AFTER_PARTIAL = "[Probe] Answer to your ask {id}: nothing more in the team's records beyond the partial answer.";
 export const TEXT_FAILED_AFTER_PARTIAL = "[Probe] Your ask {id} stopped: {reason}. No fuller answer is coming; the partial answer is what there is.";
 export const TEXT_ALERT = "[Probe] Run alert\n{message}";
@@ -312,6 +317,23 @@ export function oneLabel(text: string): string {
   return INBOX_LABEL_TAG + untag(text.slice(INBOX_LABEL_TAG.length));
 }
 
+/** `citations.add_to_body`: `line` after the text's body, above its sources list (the run of source lines at
+ * the bottom). */
+export function addToBody(text: string, line: string): string {
+  const lines = (text || "").trimEnd().split("\n");
+  let firstSource = lines.length;
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const stripped = lines[index].trim();
+    if (!stripped) continue;
+    if (stripped.length > SOURCE_LINE_CHARS || !SOURCE_LINE.test(stripped)) break;
+    firstSource = index;
+  }
+  const body = lines.slice(0, firstSource).join("\n").trim();
+  const sources = lines.slice(firstSource).map((l) => l.trim()).filter((l) => l);
+  const withLine = body ? `${body}\n${line}` : line;
+  return sources.length ? `${withLine}\n\n${sources.join("\n")}` : withLine;
+}
+
 /** `Message.rendered`: what the agent reads, under the one-label rule. */
 export function rendered(msg: Message): string {
   return oneLabel(framed(msg));
@@ -340,7 +362,7 @@ function framed(msg: Message): string {
   if (isPartial(msg)) return fill(TEXT_PARTIAL);
   const after = msg.partial === true; // an ask's end after a partial answer
   if (msg.kind === KIND_ANSWER) {
-    if (after) values.message = `${msg.text}\n${NOTHING_MORE}`;
+    if (after) values.message = addToBody(msg.text, NOTHING_MORE);
     return fill(TEXT_ANSWER);
   }
   if (msg.kind === KIND_NOTHING) return fill(after ? TEXT_NOTHING_AFTER_PARTIAL : TEXT_NOTHING);

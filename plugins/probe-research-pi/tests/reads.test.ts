@@ -277,6 +277,18 @@ describe("the Probe service's hints (plan probe-hints R2)", () => {
     );
   });
 
+  it("puts NOTHING_MORE above a promoted partial's sources list, which stays last", () => {
+    const base = { id: "a", ask: "aq1", question: "q", reason: null, expiresAt: 0, partial: true, origin: null };
+    const text = "lr 3e-3 [1].\n\n[1] - run lr-sweep-3 (id:6a0c1f52-0b8e-4d3e-9f51-2b8f1c7d9e10)";
+    expect(rendered({ ...base, kind: "answer", text })).toBe(
+      "[Probe] Answer to your ask aq1:\nlr 3e-3 [1].\n(the daemon found nothing more)\n\n"
+      + "[1] - run lr-sweep-3 (id:6a0c1f52-0b8e-4d3e-9f51-2b8f1c7d9e10)",
+    );
+    expect(rendered({ ...base, kind: "answer", text: "lr 3e-3" })).toBe(
+      "[Probe] Answer to your ask aq1:\nlr 3e-3\n(the daemon found nothing more)",
+    );
+  });
+
   it("never wakes an idle pi for a hint", () => {
     publish("h1", "message", { text: HINT, origin: ORIGIN_HINT }, 1);
     expect(box.deliver(box.currentTurn(), "pi poller", false)).toEqual([]);
