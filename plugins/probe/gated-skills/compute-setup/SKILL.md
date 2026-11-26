@@ -7,6 +7,9 @@ description: Connects a team's GPU machines or cluster to Probe with `probe comp
 `probe compute connect` finds where this team's GPU work runs and installs probe-node there (it
 reports each machine's GPUs and jobs to Probe). It changes nothing until the person says yes.
 
+Only a team owner or admin can register GPUs: if `probe whoami` shows another `role`, tell the
+person to ask an owner or admin, and stop.
+
 1. See what it finds and the exact change for each target:
    ```bash
    probe compute connect --dry-run
