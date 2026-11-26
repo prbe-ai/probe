@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.655.0
+
+- compute-setup skill: a read-only cluster now names the full rights connect needs (cluster-wide install; in practice cluster-admin).
+
 ## 0.654.0
 
 - **probe-node conformance GCP VMs block project-wide SSH keys.** A `--provider gcp` (and k3s) VM now sets `block-project-ssh-keys=TRUE`, so only the run's own key logs in (Oneleet "GCP compute instances block usage of shared logins").
