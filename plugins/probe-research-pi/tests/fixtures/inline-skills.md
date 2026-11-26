@@ -155,28 +155,23 @@ A link points from the newer thing to what it came from.
 
 # Skill: write-summary
 
-Each project and experiment the work touches has a page, a custom Claude artifact in the dashboard's Summary pane. Write it only to its draft and `probe summary push` it; never publish it elsewhere.
+Each project and experiment has a short Summary in the dashboard. Edit its checked-out draft and push it with `probe summary push`.
 
 The draft is checked out for you when work first lands on one (the path is printed); `probe summary checkout --project <slug>` (or `--experiment <slug>`) loads one by hand. Edit it, then push once with the same flag. Write the first page when you create one; update it on a result or a change of direction. Linking a project `--part-of` another: update that page to name the new part. When what a project is about changes, or its runs first hold a real example, rewrite its canvas preview too (`write-preview`, when shown to you). A `.md` draft (older CLI) takes Markdown, never html.
 
-Before editing, read `overview-page`, `overview-contract`, `artifact-design`, `artifact-diagramming` and, with metrics, `overview-charts` (beside this file), unless shown to you whole.
+# What to write
 
-# The page, top to bottom
+Write up to 3 bullets using plain words a 10-year-old could follow. Keep each to 6 words or fewer, on one line. Use only the bullets that have something to say:
 
-Push refuses any other shape (limits in `overview-page`).
+- Where the work stands
+- What comes next
+- What you need from the researcher, or the open question
 
-1. Up to 3 bullets, each one short line; no line above them. Drop any with nothing to say:
-   - where it stands
-   - next step
-   - what you need from the researcher, or the open question
-2. Evidence: per point, a heading that says it, a visual, a caption. A logged curve, or more than three numbers compared: a chart, never a table.
+The bullets are the whole Summary. Leave out titles, paragraphs, decisions, numbers, and visual evidence. Put decisions in Decisions and detailed findings in Notes.
 
-- The bullets: plain words a 10-year-old could follow, no numbers.
-- Nothing else: no decisions (they have their own tab), no history, no text between sections.
-- Each update rewrites the bullets around the newest result; cut what's stale.
-- A project page covers all its parts, sized by the work in each, not by recency. Detail goes on the experiment's page.
+Use one `<ul>` with `<li>` items in an HTML draft, or `- ` lines in a Markdown draft. When updating an older report, replace its generated sections, figures, styles, and chart declarations with the bullets. Keep every person's `<!-- kept: hN -->` block in place. Markdown figure markers (`kept: fN`) can go.
 
-Numbers (visuals and captions only): measurements to 3 significant figures, counts exact, p-values as Probe gives them. Leave `<!-- kept: ... -->` blocks alone. Who did what: `probe mcp call entity '{"refs": ["<kind>:<slug>"], "view": "sessions"}'` (or `"summary_history"`).
+Update the bullets when the result or direction changes. A project Summary covers its parts in proportion to the work in each. Keep experiment detail with the experiment.
 
 # Skill: edit-notes
 
