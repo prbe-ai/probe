@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.660.0
+
+- **Clearer source names in the daemon's citations.** A long run name is listed whole (`[5] - run Miles Async GRPO on GSM8K Retry`), not cut to its last word, and a session whose title holds a short id gets one `[n]`, not two.
+
 ## 0.659.0
 
 - **The Probe daemon cites its sources.** Its messages, its replies to `probe ask --writer` and the team-note audit's report mark each claim with `[1]` and list each Probe record at the bottom as `[1] - <name> (id:<full id>)`, with the whole id your agent can open, never 8 characters. A message whose citations are wrong is sent back to the daemon once; the length limit on messages the daemon sends unasked no longer counts the sources list, and a long audit report keeps its sources when its text is cut. An ask that names a record's id opens that record first instead of searching again.
