@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.662.0
+
+- **The `compute-setup` skill stops for anyone but an owner or admin.** Registering GPUs mints an enrollment token only an owner or admin may (#5630), so the skill checks `probe whoami`'s `role` first and tells anyone else to ask an owner or admin, instead of running a connect that fails.
+
 ## 0.661.0
 
 - **Steadier daemon citations.** An id followed by emphasis or a dash (`_id:<id>_`) is cited without it, and a `[1]` the daemon wrote right next to an id it cites is dropped instead of being left without a source.
