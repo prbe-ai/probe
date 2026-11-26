@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.657.0
+
+- **`probe compute connect` finds GKE, EKS and AKS from the cluster's nodes.** A kubeconfig whose context name
+  gcloud, aws or az did not write (a ServiceAccount token, CI) used to get no platform preset, so on GKE the
+  DaemonSet ran on no GPU node. Connect now reads the nodes (read-only) to pick the preset, and a release already
+  installed with another platform's preset stops connect with how to fix it instead of being skipped as if it
+  worked.
+- **The `compute-setup` skill arrives for Claude Code when you sign in during a chat.** Each kept
+  `/v1/me/gated-skills` answer now copies (or removes) the gated skills in Claude Code's own skills folder at once,
+  as it already did for Codex, instead of waiting for the next session start; Runs only keeps them too.
+
 ## 0.656.0
 
 - **Agents get whole session ids.** A transcript hit from `search` now carries its full `session_id`, and decisions read over MCP or listed by `probe decision list` name the session they came from as `<title> (id:<full id>)`, so an agent can open or cite the session without a cut-down id.
