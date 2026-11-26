@@ -418,6 +418,22 @@ def test_both_probe_ingest_token_lengths_are_removed_whole(token: str) -> None:
     assert token[len("ros_ing_") :] not in redacted
 
 
+_NODE_ENROLL = "probe_" + "nodeenroll_" + "0a1b2c3d4e5f6789" * 3
+_NODE_CRED = "probe_" + "node_" + "9f8e7d6c5b4a3210" * 3
+
+
+@pytest.mark.parametrize("token", [_NODE_ENROLL, _NODE_CRED], ids=["enrollment", "node"])
+def test_probe_node_credentials_are_removed_whole(token: str) -> None:
+    redacted, rules = secrets.redact(f'{{"enrollment_token": "{token}"}}')
+    assert rules == ["probe-node-credential"]
+    assert token.split("_")[-1] not in redacted
+
+
+@pytest.mark.parametrize("text", ["probe_node_e2e_credential", "probe_nodeenroll_e2e", "probe_node_" + "ab" * 10])
+def test_the_e2e_stubs_node_values_are_left_alone(text: str) -> None:
+    assert secrets.redact(f"PROBE_NODE_TOKEN={text}") == (f"PROBE_NODE_TOKEN={text}", [])
+
+
 @pytest.mark.parametrize("name,text", FALSE_POSITIVES, ids=[n for n, _ in FALSE_POSITIVES])
 def test_false_positive_does_not_fire(name: str, text: str) -> None:
     redacted, rules = secrets.redact(text)
@@ -530,6 +546,8 @@ def test_shannon_entropy_matches_the_outage_measurements() -> None:
         ("env_default_flood", ('os.getenv("API_KEY", "' + "a" * 600) * 200),
         ("docker_auth_flood", ('"auth": "' + "A" * 5_000) * 20),
         ("wandb_key_flood", ("wandb:\n  key: " + "a" * 39 + "\n") * 2_000),
+        ("wandb_args_flood", ('add_argument("--wandb-api-key", ' + "type=str, " * 3 + "a" * 39 + " ") * 2_000),
+        ("wandb_login_flood", ("wandb.login(" + "relogin=True, " * 3 + "key=" + "a" * 39 + " ") * 2_000),
         ("uri_long_no_at_flood", ("https://u:" + "A" * 3_000 + "/") * 20),
         ("camel_bare_flood", ("xPassword: " + "a1" * 300 + " ") * 100),
         ("acronym_flood", ("ABCDEFGPassword" * 4_000)),
