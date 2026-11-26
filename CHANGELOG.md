@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.653.0
+
+- **probe-node conformance can test on GCP and refuses to overspend.** The conformance harness (`agent/tools/probe-node/conformance`) gains spot GPU VMs on GCP that delete themselves, a GKE and a k3s cluster mode for one onboarding-eval install, a two-machine case (C15) and a SkyPilot managed-job case (C16). Spend now counts against one approved campaign cap across runs, a run where nothing passed exits non-zero, and a terminating sweep only touches one run's machines.
+- **`status --repaste-choice gpus` counts the re-paste menu's new "Register your GPUs" item.** The agent install's menu shows this item only to an agent with the gated `compute-setup` skill.
+
+Write project and experiment Summaries as up to three short, plain-language bullets.
+
 ## 0.652.0
 
 - **`probe compute disconnect` revokes the enrollment token it minted.** It uses your own key (an owner or admin needs no browser), else asks for the same `compute:enroll` browser approval as connect and revokes that key right after. It never prints a command that would be refused; if revoking finally fails it says why, with the token id and a command a team owner or admin can run. A rolled-back connect does the same. A failed revoke never undoes a working install.
