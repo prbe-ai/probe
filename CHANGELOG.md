@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.659.0
+
+- **The Probe daemon cites its sources.** Its messages, its replies to `probe ask --writer` and the team-note audit's report mark each claim with `[1]` and list each Probe record at the bottom as `[1] - <name> (id:<full id>)`, with the whole id your agent can open, never 8 characters. A message whose citations are wrong is sent back to the daemon once; the length limit on messages the daemon sends unasked no longer counts the sources list, and a long audit report keeps its sources when its text is cut. An ask that names a record's id opens that record first instead of searching again.
+
 ## 0.658.0
 
 - **Code capture checks files for credentials again.** `probe exec`, `probe.init()` and `probe snapshot` hold back a file whose contents look like a credential instead of uploading it as run code, and say which files. Code files get a fast check for keys with a known shape (Probe, OpenAI, Anthropic, Hugging Face, GitHub, W&B and others) and private key blocks; other files get every check. Files named like a session token, cookie jar or kubeconfig (`*.token`, `cookies.txt`, `kubeconfig`, `.kube/`) are left out unless git tracks them. A file the job writes into its folder that holds a known-shape key, or an archive with one (or a credential-named file) inside, is not uploaded as an output; a cut-short archive is checked up to the break. Compute node credentials (`probe_node_`, `probe_nodeenroll_`) are now recognised everywhere credentials are hidden (tap 0.10.81).
