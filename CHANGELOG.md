@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.652.0
+
+- **`probe compute disconnect` revokes the enrollment token it minted.** It uses your own key (an owner or admin needs no browser), else asks for the same `compute:enroll` browser approval as connect and revokes that key right after. It never prints a command that would be refused; if revoking finally fails it says why, with the token id and a command a team owner or admin can run. A rolled-back connect does the same. A failed revoke never undoes a working install.
+- **Tighter enrollment tokens from `probe compute connect`.** An ssh host's token enrolls at most 1 node and expires after a day, since the host enrolls during the install. helm/k8s, SkyPilot and container templates keep unlimited nodes and the default life, because autoscaling adds nodes later.
+- **`probe login --email <addr>` / `--team <slug>`.** The browser approval is refused for any other account or team. A CLI that is already signed in binds its re-login and scoped-key requests to its own account. After login the CLI names the account and team, with "Wrong account? run `probe logout` and log in again".
+- **Generated models: entity search's new kinds.** `EntityType` gains `dataset`, `environment` and `model`; `EntitySearchResult` gains `ref` and its `project_id`/`project_name` may be null. No CLI command reads them.
+
 ## 0.651.0
 
 - **`probe compute connect` links a SkyPilot server's key to its cluster.** The queue reader's enrollment token
