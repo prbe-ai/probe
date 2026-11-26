@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.658.0
+
+- **Code capture checks files for credentials again.** `probe exec`, `probe.init()` and `probe snapshot` hold back a file whose contents look like a credential instead of uploading it as run code, and say which files. Code files get a fast check for keys with a known shape (Probe, OpenAI, Anthropic, Hugging Face, GitHub, W&B and others) and private key blocks; other files get every check. Files named like a session token, cookie jar or kubeconfig (`*.token`, `cookies.txt`, `kubeconfig`, `.kube/`) are left out unless git tracks them. A file the job writes into its folder that holds a known-shape key, or an archive with one (or a credential-named file) inside, is not uploaded as an output; a cut-short archive is checked up to the break. Compute node credentials (`probe_node_`, `probe_nodeenroll_`) are now recognised everywhere credentials are hidden (tap 0.10.81).
+
 ## 0.657.0
 
 - **`probe compute connect` finds GKE, EKS and AKS from the cluster's nodes.** A kubeconfig whose context name
