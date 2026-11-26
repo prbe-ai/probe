@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.661.0
+
+- **Steadier daemon citations.** An id followed by emphasis or a dash (`_id:<id>_`) is cited without it, and a `[1]` the daemon wrote right next to an id it cites is dropped instead of being left without a source.
+
 ## 0.660.0
 
 - **Clearer source names in the daemon's citations.** A long run name is listed whole (`[5] - run Miles Async GRPO on GSM8K Retry`), not cut to its last word, and a session whose title holds a short id gets one `[n]`, not two.
