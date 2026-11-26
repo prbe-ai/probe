@@ -138,7 +138,7 @@ A link points from the newer thing to what it came from.
 
 1. Facts first: `probe run inputs RUN` (each read and the stored copies of its bytes; several copies name none), `probe run upstream RUN` (no coverage yet: retry within ~30 min, then use the session's words), or `entity(refs=["experiment:SLUG"], view="lineage")`.
 2. B built on A:
-   - a new experiment varying experiment A: `probe experiment fork A B --question "..."` (links `forked_from`)
+   - a new experiment varying experiment A: `probe experiment fork A B --name "..." --question "..."` (links `forked_from`)
    - link every follow-up to what it built on (fork or `derived_from`): that draws its branch
    - B relaunches run A because A failed or crashed: `retried_from`
    - B reruns A's setup any other way: `branched_from`

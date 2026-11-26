@@ -19,12 +19,12 @@ Lookup only; judgment is in the skill.
 ```
 probe project create SLUG --kind K --name "..." [--part-of P --reason "..."] [--tag T] | list | get | use | set | move | delete
 probe experiment create SLUG --project P --name "..." --question "..." | set [--question|--conclusion] | freeze --label L | delete | edges
-probe experiment fork SRC NEW --question "..." | inherited EXP [--runs]
+probe experiment fork SRC NEW --name "..." --question "..." | inherited EXP [--runs]
 probe exec [--project P | --experiment E] [--parent RUN --relation R] -- CMD
 probe run fork SRC --step N | end --status S | check | reproduce | tag | set RUN --name --description
 probe group create EXPERIMENT_ID --name NAME [--kind K] [--spec JSON|@FILE] | list | get | set
 probe trial list RUN | get TRIAL | set TRIAL --name
-probe workspace create SLUG [--name] [--use] | list | get | rename | use | delete ID --yes
+probe workspace create SLUG [--name] [--use] [--emoji E|--image FILE] | icon ID --emoji E|--image FILE|--clear | list | get | rename | use | delete ID --yes
 probe shared list | download | delete
 probe edge add --source TYPE:REF --relation R --target TYPE:REF --reason "..." [--evidence EVENT_ID] | remove EDGE_ID
 probe decision add (--project P | --experiment E) --title "..." --reason "..." --by researcher|agent --affects TYPE:REF=started|stopped|changed|based_on ... [--follows ID] [--also-follows ID ...] [--evidence EVENT_ID] | list [--project P | --experiment E] [--json] | remove ID
