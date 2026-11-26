@@ -28,8 +28,13 @@ reports each machine's GPUs and jobs to Probe). It changes nothing until the per
    ```
    `--yes` stands for the person's yes, so never pass it before they gave one. If it asks for a
    browser approval, tell the person to approve it. A failed step is rolled back; show them the error.
+   If the cluster access is read-only or refused, say what is missing: rights to create a namespace,
+   a Secret and a DaemonSet. Someone who has them runs connect.
 4. Check: `probe compute clusters` lists the cluster, and `probe compute nodes` lists each machine
    once it reports.
+
+If something looks wrong, stop and tell the person what you saw. Never fix it by hand: no commands
+inside system pods, no relay or key of your own, no changes to the installed release.
 
 Never uninstall. An admin removes Probe from a cluster on the dashboard: tell the person that, and
 never run `probe compute disconnect`, `helm uninstall` or any delete yourself. Never print or paste
