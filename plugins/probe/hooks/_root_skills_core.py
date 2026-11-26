@@ -33,7 +33,9 @@ names, so no agent reads them from the plugin. One is copied only when the serve
 answer, kept on disk (`get_gated_cache_path`), names it; no answer, an unreadable or stale one, or a skill
 it leaves out means the skill is absent, and a copy of ours already there is pruned. Claude Code gets it
 with its root skills (`apply`); Codex, which reads the rest from the plugin by manifest, gets ONLY the gated
-copies in its own `skills/` (`apply_gated`), each marked gated so nothing else of ours there is touched.
+copies in its own `skills/` (`apply_gated`), each marked gated so nothing else of ours there is touched. The CLI
+also runs `apply_gated` on both folders each time it keeps an answer (`gated_skills.apply_gated_copies`): a
+sign-in during a chat starts no session.
 
 WE NEVER TOUCH A FOLDER WE CANNOT PROVE IS OURS. `probe`, `track-work` and
 `edit-notes` are generic names in a namespace someone else may already use
@@ -368,10 +370,13 @@ def apply_from(
     plugin: str,
     wanted: "tuple[str, ...] | list[str]",
     still_installed: "Callable[[], bool] | None" = None,
+    prunable: "Callable[[Path], bool] | None" = None,
 ) -> dict:
     """`apply`, from a folder of skills (`<src_root>/<slug>/SKILL.md`) named `plugin` in each marker: a
-    plugin's `agent-skills/`, or the CLI wheel's own skills for Runs only (no plugin there to copy from)."""
-    return _apply_sources(skills_root, {slug: Path(src_root) / slug for slug in wanted}, plugin, still_installed)
+    plugin's `agent-skills/`, or the CLI wheel's own skills for Runs only (no plugin there to copy from).
+    `prunable`: which of ours it may remove (default any)."""
+    return _apply_sources(skills_root, {slug: Path(src_root) / slug for slug in wanted}, plugin, still_installed,
+                          prunable=prunable)
 
 
 def _apply_sources(
