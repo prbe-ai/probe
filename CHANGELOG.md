@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.656.0
+
+- **Agents get whole session ids.** A transcript hit from `search` now carries its full `session_id`, and decisions read over MCP or listed by `probe decision list` name the session they came from as `<title> (id:<full id>)`, so an agent can open or cite the session without a cut-down id.
+
 ## 0.655.0
 
 - compute-setup skill: a read-only cluster now names the full rights connect needs (cluster-wide install; in practice cluster-admin).
