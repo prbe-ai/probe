@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.663.0
+
+- **Daemon on Pydantic AI 2.59 and pydantic-ai-harness 0.59.** Clears GHSA-3589-pxp7-3gj8 (harness < 0.59, Dependabot #226). The writer's compaction now writes its rewritten history back to the run, as the new harness expects, so a compacted conversation is not compacted again on the next request. A compaction round's trace line times only the round's model call, not the summary call before it. The new libraries need Python 3.11+: on Python 3.10 the `daemon` extra no longer installs. The background update moves a 3.10 install with daemon mode onto Python 3.13; `probe update` and `probe daemon install` on an install with no recorded Python stop with an error instead. Capture and the SDK still support 3.10.
+- **`probe status --json` and `probe doctor --send` give each recorder's start time.** `service.recorders[].started_at` (epoch seconds) lets a report tell a recorder that is still starting from one that is stuck, so a session opened seconds before `probe doctor --send` is no longer reported as "running but not recording".
+- **The reader benchmark grades citations the same way for every reader.** The ask replay bench (`agent/evals/companion/ask_replay`) now credits a citation written as a Probe ref (`project:<slug>`, `(id:project:<slug>)`, `dataset:<name>@1`) when it names exactly one record the turn's tools showed. A record enters the answer key only when some run's tool output showed it, so an id that only appears in a command or a "not found" reply no longer counts. The closest records a found=false answer lists are counted on their own, not as cited answers. Recall pooled over every key record is reported beside the per-ask mean.
+- **Sessions keep recording through an update's restart.** The restarted service loads the tap its own release ships first (the newest wins), so a session whose saved tap folder an earlier release's clean-up removed is resumed instead of going unrecorded until its next prompt.
+
 ## 0.662.0
 
 - **The `compute-setup` skill stops for anyone but an owner or admin.** Registering GPUs mints an enrollment token only an owner or admin may (#5630), so the skill checks `probe whoami`'s `role` first and tells anyone else to ask an owner or admin, instead of running a connect that fails.
