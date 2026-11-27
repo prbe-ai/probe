@@ -1476,6 +1476,8 @@ DAEMON_AGENT_WRITES = frozenset(
         "run token",
         # Control of a live run the agent launched (agentic W&B C.1): checkpoint, a setting, stop.
         "run send",
+        # Declaring a metric range on the agent's own run (the profile admits it, DAEMON_PROFILE_ALLOWED).
+        "run expect",
         # ...and of its RL samples (rl-next W34): stop or rerun one; the rollout proxy sidecar (W35) a
         # launch starts beside its harness.
         "samples cancel",
@@ -1502,6 +1504,10 @@ DAEMON_AGENT_WRITES = frozenset(
         "chart layout",
     }
 )
+
+#: The agent's writes (`DAEMON_AGENT_WRITES`) that name a run: inside a run (`PROBE_RUN_ID`) they are
+#: its own work only on that run (`write_gate._refuse_records`).
+AGENT_WRITES_NAMING_A_RUN = frozenset({"run send", "run expect"})
 
 #: Writes that are the run's OWN data only when a run makes them: inside a
 #: `probe exec` job or an SDK script (`PROBE_RUN_ID` set), a `probe artifact add`
@@ -1887,6 +1893,12 @@ _INLINE_TAIL_AUTO = "If you need to do it yourself, run `probe session state inl
 DAEMON_PROFILE_DENY = _DAEMON_PROFILE_DENY_HEAD + _INLINE_TAIL
 DAEMON_PROFILE_DENY_AUTO = _DAEMON_PROFILE_DENY_HEAD + _INLINE_TAIL_AUTO
 
+#: A daemon-profile chat set `off`: what the profile reserves (`daemon_profile_allows`) stays refused,
+#: in off words (`get_off_profile_refusal`), then `DIRECTED_RETRY` or the inline tail.
+OFF_PROFILE_DENY_HEAD = (
+    "Probe is off for this chat, and agents don't run `{matched}` on their own here, so it was refused before it ran. "
+)
+
 #: A table read the agent runs, refused for a flag that reads every page
 #: (`DAEMON_PROFILE_TABLE_UNBOUNDED`): `{offender}` names it (Richard's approved
 #: text, 2026-11-17), then the inline tail.
@@ -2092,6 +2104,25 @@ def daemon_profile_deny(args: "list[str]", matched: str, session_id: "str | None
         return (get_daemon_profile_deny(session_id) + "\n\n" + DIRECTED_RETRY).format(matched=matched)
     kind, _matched = classify_probe_args(args)
     return get_daemon_profile_deny(session_id, is_write=kind == "write").format(matched=matched)
+
+
+def get_off_profile_refusal(args: "list[str]", session_id: "str | None" = None) -> "str | None":
+    """The refusal for args after `probe` in a daemon-profile chat set `off`, or None. Both gates call it
+    (the hook's off branch, the CLI's `_refuse_records`), so they refuse the same commands. The team's
+    records (a kind from `classify_probe_args`) are the off rule's, so None; so is what
+    `daemon_profile_allows` admits. Anything else (a removal, a secret printer, a workspace change)
+    stays refused: `OFF_PROFILE_DENY_HEAD`, then `DIRECTED_RETRY` for a workspace change, else the
+    inline tail."""
+    if classify_probe_args(args)[0] is not None:
+        return None
+    allowed, matched = daemon_profile_allows(args, session_id)
+    if allowed:
+        return None
+    if _directed_workspace_change(args) is not None:
+        tail = DIRECTED_RETRY
+    else:
+        tail = _INLINE_TAIL_AUTO if session_id and is_auto_chat(session_id) else _INLINE_TAIL
+    return OFF_PROFILE_DENY_HEAD.format(matched=matched) + tail
 
 
 # ---------------------------------------------------------------------------
