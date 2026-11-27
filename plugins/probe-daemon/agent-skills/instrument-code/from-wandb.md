@@ -1,17 +1,16 @@
 # Switch a script from W&B to Probe
 
-Read this when a training, eval or sweep script logs to W&B (`import wandb`) and the person wants it to log to Probe
-instead. The runs W&B already holds come over with the W&B import, which checks each copied run against W&B point
-for point; this page moves the CODE.
+Read this when a script logs to W&B (`import wandb`) and the person wants it to log to Probe. The W&B import
+brings over past runs; this page moves the CODE.
 
 ## THE ORDER
 
 1. **Keep both for one run.** Add the Probe calls beside the W&B ones, `probe.init` AFTER `wandb.init`: Probe then
    records the active `wandb.run`'s id on its run, so an import later fills that same run instead of making a second
    one. Run it once.
-2. **Check parity.** Import that W&B project: `probe import review --wandb-project <entity/project> --json`, then,
-   once the person says yes to its consent lines, `probe import start <id> --directed`. When `probe import status`
-   says it is done, read its parity line: `identical`, or `only expected differences` naming why. A run that
+2. **Check parity.** Review that W&B project's import with `probe import review`, then, once the person says yes
+   to its consent lines, `probe import start <id> --directed`. When `probe import status` says it is done, read its
+   parity line: `identical`, or `only expected differences` naming why. A run that
    `differs` is named, its series listed in `imports/wandb-parity-<date>.md` on the project: fix the code first.
 3. **Remove W&B.** Delete every `wandb` call and the import, run once more, then verify at the destination
    (`probe run get <id>`, `probe metrics plot <id>`): the same keys as W&B's, at the same steps.

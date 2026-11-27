@@ -65,13 +65,11 @@ beating.
 - Any other `4xx`: drop that request and warn once per kind. After a `401` stop sending: the token
   is wrong or expired.
 - At exit, flush what is queued and send the finish within ONE deadline of 600 s, as the Python SDK
-  does (`FINISH_TIMEOUT_DEFAULT_SECONDS` in `run/closing/drain.py`): flush until 5 s before it
-  (`_CLOSE_RESERVE_SECONDS`), then send the finish even if the flush ran out (dropping what is still
-  queued), then let the program end. Wait up to 30 s for each answer (`_DEFAULT_TIMEOUT` in
-  `delivery/transport/transport.py`) and retry with waits of at most 4 s while exiting
-  (`_FINISH_BACKOFF`). The deadline is a ceiling: a healthy exit ends when the last answer lands.
-  Never cut it to a few seconds: on prod a metrics write answered in 5.0-6.9 s and a finish in
-  5.5-7.7 s, so a 5 s budget loses the tail of the curve and leaves the run `running`.
+  does: flush until 5 s before it, then send the finish even if the flush ran out (dropping what is
+  still queued), then let the program end. Wait up to 30 s for each answer and retry with waits of at
+  most 4 s while exiting. The deadline is a ceiling: a healthy exit ends when the last answer lands.
+  Never cut it to a few seconds: prod answers take 5-8 s, so a 5 s budget loses the tail of the curve
+  and leaves the run `running`.
 - Only a host that is killed sooner (a serverless handler, a container's SIGTERM grace period) uses
   a short budget: the time it is given, less 5 s kept for the finish. Say in the client's README
   that it may lose the last writes and leave the run `running` (the server marks it `crashed` after
@@ -87,7 +85,7 @@ beating.
 
 Probe stores metric points through a queue. Send `X-Probe-Async-Ack: 1` on every metrics `POST`:
 Probe then answers `202` as soon as the batch is safe in the queue, and stores it a moment later.
-Without the header each write waits for the store: 10-20 s on prod, and `probe client check` fails
+Without the header each write waits for the store (10-20 s on prod) and `probe client check` fails
 `metrics`.
 
 - `202` is success, like `201`: never retry it, the batch is kept. Read nothing from its body.
@@ -213,14 +211,14 @@ function splitParentFirst(spans: AnyExportedSpan[], max: number): AnyExportedSpa
 Write a short test program that uses your client as the real program will: create the run, log a
 few metric points, send one agent call of 2 or more spans (only when the program records agent
 calls), finish, exit 0. Then run
-`probe client check -- <command>` (`--json` prints one line; a CLI without it needs `probe update`).
+`probe client check -- <command>` (a CLI without `client check` needs `probe update`).
 It starts a local stand-in for the server and runs the command three times with `PROBE_BASE_URL`
 and a throwaway `PROBE_TOKEN` set (nothing reaches Probe):
 
 1. create: Probe answers one `409` (project create), `503` (run create), `500` (metrics), `503
    data_pending` (the finish) and `413` (the first call of 2 or more spans) along the way, answers
    `202` to a metrics write that carries `X-Probe-Async-Ack: 1`, and holds every metrics and finish
-   answer for 7 s (`--write-delay`, 0 turns it off), so a client that exits before those answers
+   answer for 7 s, so a client that exits before those answers
    fails `metrics` or `finish`;
 2. join: `PROBE_RUN_ID` and a run token are set;
 3. refused: every answer is `401`.

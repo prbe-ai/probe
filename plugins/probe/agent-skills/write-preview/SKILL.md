@@ -6,8 +6,8 @@ description: A project's canvas preview. Use it unasked after `probe project cre
 # Write a project's preview
 
 Only while you record this chat yourself (`probe session status` says `inline`); otherwise the
-daemon's writer does it. Sandboxed: add `--out <a folder in your workspace>` to `checkout`. Told to
-leave it: tell the researcher in one line.
+daemon's writer does it. Sandboxed: check it out into a folder in your workspace. Told to leave it:
+tell the researcher in one line.
 
 Pane `about` shows what the project is about. Use one visual:
 

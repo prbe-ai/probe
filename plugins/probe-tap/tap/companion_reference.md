@@ -1,47 +1,40 @@
 # Reference
 
-Lookup only; judgment is in the skill.
+Lookup only; judgment is in the skill. Each command's flags are in `probe <command> --help`.
 
 ## INDEX
 
 | section | holds |
 |---|---|
-| §1 ENTITY COMMANDS | every create/change/delete verb, per entity |
+| §1 ENTITIES | what each entity is for |
 | §2 QUESTION AND TAGS | question, conclusion and tag shapes |
 | §3 RUN | snapshot inputs, capture calls, delivery (the outbox) |
 | §4 FILES AND NUMBERS | artifact commands, big files, names and versions, metric shape, derived metrics |
-| §5 PAPERS | paper flags |
+| §5 PAPERS | what goes in each paper field |
 | §6 NOTES, §7 READING BACK, §8 PUBLISHING | notes, reads (RL samples too), experiment versions |
 | §9 RECIPES | data processing, provisioning, trials |
 
-## 1. ENTITY COMMANDS
+## 1. ENTITIES
 
-```
-probe project create SLUG --kind K --name "..." [--part-of P --reason "..."] [--tag T] | list | get | use | set | move | delete
-probe experiment create SLUG --project P --name "..." --question "..." | set [--question|--conclusion] | freeze --label L | delete | edges
-probe experiment fork SRC NEW --name "..." --question "..." | inherited EXP [--runs]
-probe exec [--project P | --experiment E] [--parent RUN --relation R] -- CMD
-probe run fork SRC --step N | end --status S | check | reproduce | tag | set RUN --name --description
-probe group create EXPERIMENT_ID --name NAME [--kind K] [--spec JSON|@FILE] | list | get | set
-probe trial list RUN | get TRIAL | set TRIAL --name
-probe workspace create SLUG [--name] [--use] [--emoji E|--image FILE] | icon ID --emoji E|--image FILE|--clear | list | get | rename | use | delete ID --yes
-probe shared list | download | delete
-probe edge add --source TYPE:REF --relation R --target TYPE:REF --reason "..." [--evidence EVENT_ID] | remove EDGE_ID
-probe decision add (--project P | --experiment E) --title "..." --reason "..." --by researcher|agent --affects TYPE:REF=started|stopped|changed|based_on ... [--follows ID] [--also-follows ID ...] [--evidence EVENT_ID] | list [--project P | --experiment E] [--json] | remove ID
-probe run inputs RUN | upstream RUN [--depth N]
-probe project reference add --to PROJECT [--part-of] --reason "..." | remove
-probe project code attach OWNER/REPO | detach | list
-```
+Each has a `probe <entity>` command group.
 
-| entity | for | create | change | delete |
-|---|---|---|---|---|
-| dataset | a named, versioned team dataset | `dataset add PATH --name N --run R` (`--upload`, only when the researcher asks, stores it in Probe) | same command: a new version | - (the dashboard; refused while runs use it) |
-| source | where outside data came from (Hub id, bucket path) | `source add URI` | - | - (refused while runs use it) |
-| Shared folder | older team files; read and delete only | - | - | `delete` (soft) |
+| entity | for |
+|---|---|
+| project | one effort; flat, linked to others by reference; a repo attached with `project code attach` |
+| experiment | one question under a project; holds runs; can be forked, frozen and versioned (§8) |
+| run | one execution; a relaunch is its child |
+| group | a sweep's runs inside an experiment |
+| trial | one rollout of a run (§9) |
+| workspace | a set of projects |
+| Shared folder | older team files: read and delete only (`probe shared`) |
+| dataset | a named, versioned team dataset: `probe dataset add` makes it or its next version, and stores the bytes in Probe only when the researcher asks. Deleted in the dashboard only, refused while runs use it |
+| source | where outside data came from (Hub id, bucket path): `source add`; deletion refused while runs use it |
+| edge | a lineage link |
+| decision | a recorded choice |
 
-`probe experiment set EXP --question "..."` is the only way to
-change a question: opening a run with `question=` on an existing experiment
-never rewrites it. `--conclusion` sets the answer; `--conclusion ""` clears it.
+`probe experiment set` is the only way to change a question: opening a run
+with `question=` on an existing experiment never rewrites it. It also sets the
+conclusion; an empty conclusion clears it.
 
 ## 2. QUESTION AND TAGS
 
@@ -56,30 +49,28 @@ config or notes.
 
 **Tags** at creation, 1-3 lowercase-kebab from a short vocabulary: `baseline`,
 `ablation`, `sweep`, `debug`, `smoke-test`, `prod-candidate`, `infra`. Retag
-when the meaning changes: `probe run tag RUN flaky --remove prod-candidate`.
+when the meaning changes.
 
 ## 3. RUN
 
 ### Snapshot inputs - the decision record
 
-```
-probe snapshot RUN --cwd PATH --include 'data/**' --include checkpoints/base.pt
-probe snapshot-show RUN                  # what was captured
-probe snapshot-restore RUN --verify-only # can it be rebuilt: want "0 unavailable"
-```
+`probe snapshot` captures a run's code and the inputs you include (paths or
+globs); `probe snapshot-show` lists what was captured; `probe snapshot-restore
+--verify-only` (verify only: it writes nothing) says whether it can be rebuilt: want "0 unavailable".
 
 - A glob matching nothing is an error; a path outside the snapshot root is
-  refused; naming a file already in the manifest adds no duplicate.
-- Big files are recorded, not stored: `--reference-over-mb`, default 100 (the
-  snapshot's own threshold, not the 5 GB artifact upload limit).
+  refused; a file already in the manifest is not added twice.
+- Files over the snapshot's threshold (100 MB by default; not the 5 GB
+  artifact limit) are recorded, not stored.
 - A non-git directory is captured whole, skipping lockfile-rebuilt trees and
   credential-shaped names.
 - Files git cannot supply are stored one artifact row per file
   (`snapshot-show` labels those `captured`), or as the run's `code-bytes`
   archive with `PROBE_CODE_STORAGE=archive`. Restore reads both.
 
-The decision record is an artifact on the run — `probe artifact add RUN
-inputs-decision.json --kind inputs_decision`:
+The decision record is an artifact on the run, `inputs-decision.json` of kind
+`inputs_decision`:
 
 ```json
 {
@@ -101,14 +92,14 @@ Use the surface the run was opened with.
 
 | | in the script (SDK) | from a shell (CLI) |
 |---|---|---|
-| metrics | `run.log({"loss": l}, step=i)` | `probe log RUN loss=0.4 --step 100` |
-| per-device / per-actor | `run.log_hw({"gpu_temp": 88}, device=3)` | `probe log RUN gpu_temp=88 --dim device=3` |
-| nested structure | `with run.span("trial", ...) as s:`, `run.step(i)` | `probe span add RUN --type trial` |
-| outputs | `run.log_artifact("ckpt", path=...)` | `probe artifact add RUN PATH --name ckpt` |
-| external ids | `run.link(wandb_run_id="abc")` | `probe link RUN --set wandb_run_id=abc` |
-| a run FROM a run | `run.child(relation="retry")` | `probe exec --parent RUN --relation retry -- cmd` |
-| computed metrics | `run.log_derived_series("eval/auc", pts, producer="…")` | `probe log RUN eval/auc=0.9 --step 100 --derived --producer …` |
-| expression views | `run.create_view("loss_ratio", spec)` | `probe views create RUN loss_ratio --spec-file spec.json` |
+| metrics | `run.log({"loss": l}, step=i)` | `probe log` |
+| per-device / per-actor | `run.log_hw({"gpu_temp": 88}, device=3)` | `probe log`, with the dimension |
+| nested structure | `with run.span("trial", ...) as s:`, `run.step(i)` | `probe span add` |
+| outputs | `run.log_artifact("ckpt", path=...)` | `probe artifact add` |
+| external ids | `run.link(wandb_run_id="abc")` | `probe link` |
+| a run FROM a run | `run.child(relation="retry")` | `probe exec` with the parent and relation |
+| computed metrics | `run.log_derived_series("eval/auc", pts, producer="…")` | `probe log`, marked derived, with its producer |
+| expression views | `run.create_view("loss_ratio", spec)` | `probe views create` |
 
 **Only the SDK runs inside the training loop**, so `step=` is a real curve
 there and scattered points anywhere else. Omitting `step=` auto-increments per
@@ -120,21 +111,18 @@ Use the `with` form of `run.span`: both timestamps off one clock, it nests
 what opens inside it, and it closes `failed` if the body raises.
 `instrument-code` covers metric-vs-span and the leak rule.
 
-
 ### Delivery - what queues
 
-`probe log`, `probe span add` and a RUN-anchored `probe artifact add` queue
-into a durable local outbox and return immediately; a project or experiment
-upload blocks unless it is over 64 MB or you pass `--async`. `--sync` forces
-blocking.
+`probe log`, `probe span add` and a run's `probe artifact add` queue into a
+durable local outbox and return at once; a project or experiment upload blocks
+unless it is over 64 MB or you ask for async.
 
 - `probe outbox status` exits 0 when everything is delivered; MCP reads lag
   the same way.
-- **`probe run end` is the barrier.** `--async` queues the close BEHIND the
-    data; `--flush-timeout N` bounds the wait.
+- **`probe run end` is the barrier**: it waits for the queued data, or queues
+  the close behind it.
 - **Failures surface** as a stderr `outbox:` banner and in `probe outbox
-    status` / `probe doctor`. `probe outbox retry` requeues dead-lettered
-    items.
+  status` / `probe doctor`. `probe outbox retry` requeues dead-lettered items.
 
 Relaunch, rewind and fork: `instrument-code`, RELAUNCHING.
 
@@ -146,14 +134,13 @@ An artifact is a name with immutable versions, each pinned from an upload.
 
 | what | command |
 |---|---|
-| upload an output | `probe artifact add RUN PATH --name N --kind KIND --step N` |
-| upload to a non-run anchor | `probe artifact add --project P \| --experiment E PATH --name N` |
-| list a run's outputs | `probe artifact list RUN` |
-| browse one folder at a time | `probe artifact tree RUN --prefix P --limit N` |
-| download a pinned version | `probe artifact download ARTIFACT_ID --version N --to PATH` |
-| read the version chain | `probe artifact versions ARTIFACT_ID` |
-| pin a new version | `probe artifact version-add ARTIFACT_ID --from-artifact SOURCE_ID --label L` |
-| who depends on this | `probe artifact pin-impact ARTIFACT_ID` |
+| upload an output, to a run, experiment or project | `probe artifact add` |
+| list a run's outputs | `probe artifact list` |
+| browse one folder at a time | `probe artifact tree` |
+| download a pinned version | `probe artifact download` |
+| read the version chain | `probe artifact versions` |
+| pin a new version | `probe artifact version-add` |
+| who depends on this | `probe artifact pin-impact` |
 | which run wrote it, which runs read it | `entity(refs=["artifact:ID"], view="lineage")`; the SDK records both for the runs it watches |
 
 ### Big files
@@ -161,21 +148,23 @@ An artifact is a name with immutable versions, each pinned from an upload.
 Up to 5 GB, upload the file (over 64 MB it goes up in parts). Over 5 GB,
 record a pointer instead:
 
-| the bytes live | pass | what lands |
-|---|---|---|
-| on this box or a shared volume | `--reference` | a `file://` uri plus path and host - say where it lives in the run's notes. `--hash` fingerprints it by reading it whole (minutes on tens of GB); `--allow-missing` for a path this host cannot see |
-| already in a bucket | `--uri s3://...` | the object uri, resolvable by anyone with the bucket |
+- bytes on this box or a shared volume: a reference, a `file://` uri plus path
+  and host. Say where it lives in the run's notes. Fingerprinting it reads it
+  whole (minutes on tens of GB); a path this host cannot see needs an explicit
+  allow.
+- bytes already in a bucket: the object uri, resolvable by anyone with the
+  bucket.
 
-`--kind`, `--step`, `--span` and `--meta` are run-anchor only. Code is always
-stored, never pointed at (`--kind code`, or the snapshot's `code_bytes`).
+Kind, step, span and meta apply to a run's artifacts only. Code is always
+stored, never pointed at (kind `code`, or the snapshot's `code_bytes`).
 Uploads are content-addressed: bytes already held are never re-sent. From the
 SDK, `run.log_artifact(name, path=…, reference=True)` records where the bytes
 are without moving them.
 
 ### Artifact names and versions
 
-**`--name` is the file's relative path; its extension is kept** (`--name ckpt`
-on `ckpt-4000.pt` stores `ckpt.pt`) so the dashboard can preview it. Never put a
+**An artifact's name is the file's relative path; its extension is kept** (name
+`ckpt` on `ckpt-4000.pt` stores `ckpt.pt`) so the dashboard can preview it. Never put a
 description in a name. Files carry no notes: say what a file is, and where it
 lives, in its run's notes (a project's file: the project's).
 
@@ -246,47 +235,40 @@ Two doors for a metric you thought of after the run finished:
     `run.log_derived({...}, step=…, producer=…)` for one step. `producer` and
     `step` are required; a backfill lands on existing steps.
 - **Expression views** - a formula over existing series, evaluated at read
-    time so it stays right as a live run advances. `probe.expr` or
-    `--spec-file`. `preview` before `create`: a spec naming an unlogged series
-    returns `missing_inputs` instead of an empty panel.
+    time so it stays right as a live run advances. `probe.expr` or a spec file
+    (`probe views create`). Preview before you create: a spec naming an
+    unlogged series returns `missing_inputs` instead of an empty panel.
 
 ## 5. PAPERS
 
-`probe paper add PROJECT "TITLE"` on the project it serves; then `list`,
-`update`, `tag`, `remove`, `edges`.
+`probe paper add` on the project it serves; then `list`, `update`, `tag`,
+`remove`, `edges`. What goes in each field:
 
-| flag | what goes in it |
-|---|---|
-| `--source` | REQUIRED - url or local path (`--url` is an alias) |
-| `--relevance` | why it matters to THIS project, one line of at most 15 words; omitted, Probe writes one |
-| `--authors` | free text, "Vaswani et al." |
-| `--repo` | the repository read alongside the paper |
-| `--summary` | the main idea in YOUR words (`@file.md` works) |
-| `--discrepancies` | what the repo does that the paper does not say: censored code, a missing ablation, a contradicted hyperparameter (`@file.md` works) |
-| `--tag` | one concept, repeatable - the axis a forty-paper review gets grouped on |
-| `--via` | the paper id you followed to this one, or `none`; omit only if you truly can't say |
-| `--via-reason` | one sentence on why that paper led here |
-| `--relates-to` | an earlier paper's id, or `none` |
-| `--relates-reason` | REQUIRED with a paper id |
-| `--relates-provenance` | `inferred` (the default: your judgment) or `human` (the researcher said so) |
-
-`--via-provenance`, required with `--via <paper id>`:
-
-| value | when |
-|---|---|
-| `observed_call` | a tool call handed it to you - `find_papers(mode="similar", expand="references"\|"citers")` already knew the source |
-| `provider_citation` | you took it off a reference list |
-| `human` | someone told you |
-| `inferred` | you worked the link out afterwards |
+- source (required): a url or local path.
+- relevance: why it matters to THIS project, one line of at most 15 words;
+  left out, Probe writes one.
+- authors: free text, "Vaswani et al."; repo: the repository read alongside
+  the paper.
+- summary: the main idea in YOUR words. discrepancies: what the repo does that
+  the paper does not say (censored code, a missing ablation, a contradicted
+  hyperparameter). Both can be read from a file.
+- tags: one concept each - the axis a forty-paper review gets grouped on.
+- via: the paper you followed to this one, or none; leave it out only if you
+  truly can't say. With a paper: one sentence on why it led here, and how you
+  know: a tool call handed it to you (`find_papers` similar, references or
+  citers), you took it off a reference list, someone told you, or you worked
+  it out afterwards.
+- relates to: an earlier paper in this project, or none. With a paper: a
+  reason (required), and whether it is your judgment (the default) or the
+  researcher said so.
 
 Amend, never re-add:
 
-- `paper update` leaves omitted fields alone; `""` clears any field but
-  `--title` and `--source` (a cleared `--relevance` is rewritten by Probe).
-- `paper tag <id> <concept>` adds, `--remove` drops, `--set` replaces.
-- `paper list <project> [--tag <concept>] [--limit 50]` reads newest first;
-  `--tag` requires ALL of them. `paper edges <project>` reads the chain
-  and the `--relates-to` links.
+- `paper update` leaves omitted fields alone; an empty value clears any field
+  but title and source (a cleared relevance is rewritten by Probe).
+- `paper tag` adds, removes or replaces concepts.
+- `paper list` reads newest first; filtering by several tags requires ALL of
+  them. `paper edges` reads the via chain and the relates-to links.
 - Adding counts as project activity; editing and removing do not.
 
 ## 6. NOTES
@@ -326,34 +308,31 @@ and its parts, the weights that made it, the step that trained on it, and a
 result: `passed` (reward at or above the full reward), `failed` (graded below
 it), `error` (never graded: an engine abort, a sandbox, a verifier, a timeout).
 Means leave `error` samples out and count them beside. By default a read counts
-what the model trained on, at the step that trained on it: `--include dropped`
-adds dropped groups, `--split eval` reads eval passes, `--by scheduled_step` the
-step that generated them.
+what the model trained on, at the step that trained on it; it can add dropped
+groups, read eval passes, or group by the step that generated them.
 
 | question | command |
 |---|---|
 | did every sample arrive (yes or no, with reasons) | `probe samples capture RUN` |
 | mean reward per step | `probe samples stats RUN --by step --measure mean_reward,count` (also `min`, `max`, `pass_rate`) |
 | the misses at a step on one scenario | `probe samples list RUN --step N --reward 0 --where scenario.set=P2` |
-| one task at step 0 beside the best checkpoint | `probe samples compare --task T --at RUN@step:0 --at "RUN@checkpoint:best(eval/val)"`; `--match scenario.template` widens to the same template |
+| one task at step 0 beside the best checkpoint | `probe samples compare --task T --at RUN@step:0 --at "RUN@checkpoint:best(eval/val)"` |
 | pass rate per template over steps; groups with no reward variance | `probe samples stats RUN --by step,scenario.template --measure pass_rate`; `--measure zero_variance_share` |
-| did async staleness hurt | `probe samples stats RUN --by staleness_max --measure mean_reward,count`; `--by step_window=50` |
-| the best checkpoint, with its base model, data, config, commit and parent | `probe checkpoint best RUN --metric eval/val [--mode min]`; `--from-evals` reads the eval runs that used each checkpoint |
-| a run's tasks; one task; its samples; its reward at every step | `probe samples tasks RUN --sort mean_reward`; `probe samples task RUN TASK`, `--samples`, `--curve` |
-| the result mix per step; where errors come from | `probe samples stats RUN --by step,result`; `--by host` (or `worker`, `engine`, `error_reason`) `--where result=error` |
-| what broke; one sample whole, its log, its tokens | `probe samples list RUN --result error`; `probe samples show SAMPLE`, `probe samples logs SAMPLE`, `probe samples tokens SAMPLE` |
+| did async staleness hurt | `probe samples stats RUN --by staleness_max --measure mean_reward,count` |
+| the best checkpoint, with its base model, data, config, commit and parent | `probe checkpoint best RUN --metric eval/val` (highest wins: `--mode min` for a loss; `--from-evals` when the score is on the eval runs) |
+| a run's tasks; one task, its samples, its reward at every step | `probe samples tasks RUN`; `probe samples task RUN TASK` |
+| the result mix per step; where errors come from | `probe samples stats RUN --by step,result`; `--by host --where result=error` |
+| what broke; one sample whole, its log, its tokens | `probe samples list RUN --result error`; `probe samples show`, `logs`, `tokens` |
 | text in responses, turns or logs | `probe samples list RUN --grep "Traceback"` |
 | attempts still running but gone quiet | `probe samples list RUN --outcome in_flight --stale-after 10m` |
 | weight versions and their checkpoints | `probe samples weights RUN` |
 | runs side by side | `probe samples stats RUN --run B --run C --by step` |
 
-`probe samples export RUN --out passed.jsonl --result passed --split train`
-writes samples whole, turns included (the list's population and filters: a run
-no trainer consumed needs `--outcome generated` or `--include all`);
-`--format atif --out DIR` writes one ATIF trajectory file per sample (Harbor's
-shape), `--format atif-jsonl` one a line; `--register-dataset NAME --note "..."`
-records the output as that dataset's next version, made by the run (an RFT-SFT set). Text output
-is cut at 4 KiB except `show`; `--json` prints the server's answer.
+`probe samples export` writes samples whole, turns included, as JSONL or as
+ATIF trajectories (Harbor's shape), and can record the output as a dataset's
+next version made by the run (an RFT-SFT set: only the passed training
+samples, `--result passed --split train`; check the count before recording it). Text output is cut at 4 KiB
+except `show`.
 
 ## 8. PUBLISHING
 
@@ -365,8 +344,7 @@ flag; never invent one.
 1. `entity(view="reproduce")` on each candidate run: check question and config, that `env_ref` resolves (`missing: ["execution_record"]` = no snapshot, not reproducible), and that `code.manifest.n_pending_upload` is zero.
 2. `entity(view="versions")` on the experiment: if a version already covers this set, do not mint a second.
 3. Present the exact experiment + asset versions and get explicit approval for that set. Metrics and exit status are not approval.
-4. `probe artifact version-add ...` per approved asset. Then mint it:
-   `probe version create EXPERIMENT_ID --label LABEL`, and report the version.
+4. `probe artifact version-add` per approved asset, then mint it with `probe version create` and a label, and report the version.
 
 Never decide on a `partial` view - §7.
 
@@ -374,13 +352,9 @@ Never decide on a `partial` view - §7.
 
 ### Data processing steps as runs
 
-One project-direct run per script or stage VERSION, with a deterministic
-`--external-id`:
-
-```
-probe exec --project PROJ --external-id clean-structures-v2 -- python clean_structures.py
-probe run inputs RUN     # what it read, and where those bytes are stored
-```
+One project-direct run per script or stage VERSION, opened by `probe exec` on
+the project with a deterministic external id (`clean-structures-v2`); then
+`probe run inputs RUN` shows what it read and where those bytes are stored.
 
 The run records the files it reads and the ones it writes in its folder. Probe
 links nothing from them: link what it used (`probe dataset use`) and register
@@ -390,32 +364,26 @@ deletions are provenance, not housekeeping.
 
 ### Provisioning
 
-The machine a training run got goes on THAT run:
+The machine a training run got goes on THAT run, as `probe link` keys
+(`gcp_zone`, `gcp_machine_type`) in its `foreign_keys`.
 
-```
-probe link $TRAIN --set gcp_zone=us-central1-a --set gcp_machine_type=a3-highgpu-8g
-```
-
-`probe link` puts machine identity in `foreign_keys`. **`foreign_keys` is ONLY
-for what the lineage vocabulary cannot say** (`consumes` `produces`
-`evaluates_on` `forked_from` `resumed_from` `retried_from` `branched_from`
-`promoted_to` `derived_from` `supersedes` `informed_by`) - a relaunch after a
-crash is `--parent RUN --relation retry`, not a key.
+**`foreign_keys` is ONLY for what the lineage vocabulary cannot say**
+(`consumes` `produces` `evaluates_on` `forked_from` `resumed_from`
+`retried_from` `branched_from` `promoted_to` `derived_from` `supersedes`
+`informed_by`) - a relaunch after a crash is a retry child of the run, not a key.
 
 ### Trials
 
 A TRIAL is one rollout, addressed by its rollout span id - the last segment of
-a `/runs/<run>/trials/<id>` link. `probe trial list RUN` is the authored
-inventory, not `probe span list --type rollout`: the span is what the producer
-emitted, the trial is the row beside it.
+a `/runs/<run>/trials/<id>` link. `probe trial list` is the authored
+inventory, not `probe span list`: the span is what the producer emitted, the
+trial is the row beside it.
 
 **Its name resolves through a chain**, and only the first link is yours:
-`trial set --name` (or a generated title) -> the rollout span's generated
-description -> the span name the script passed -> `Unnamed trial`. The
-generated title lands once the run goes terminal, from the span's
+a name set with `probe trial set` (or a generated title) -> the rollout span's
+generated description -> the span name the script passed -> `Unnamed trial`.
+The generated title lands once the run goes terminal, from the span's
 `attributes`, so at instrumentation time the lever is a meaningful `name=` and
 populated `attributes`. A name you set is sticky: generation and the
-producer's retries both leave it alone.
-
-`trial set --name|--description` are the only authored fields; a trial has no
-notes.
+producer's retries both leave it alone. Name and description are a trial's
+only authored fields; it has no notes.

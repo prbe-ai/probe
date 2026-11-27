@@ -5,62 +5,60 @@ description: Write a pane - a live visual on a project, experiment or run page. 
 # Write a pane
 
 A pane is your own HTML/JS plus a recipe: the data it reads, never the data itself. Probe resolves
-the recipe every time the pane opens, for the runs in view (an experiment's, a project's newest 50,
+the recipe each time the pane opens, for the runs in view (an experiment's, a project's newest 50,
 or the runs someone picked to compare), so new runs show up without a rewrite. Panes sit at the top
 of the project's or experiment's page; summary rewrites never touch them. A pane about one run goes
-on that run (`id:<run-id>` where a command takes the project or experiment): it sits in the run's
-page and reads that run alone.
+on that run (`id:<run-id>` in place of the project or experiment) and reads that run alone.
 
 First ask whether a built-in view shows it: a curve over steps is in the metric section; a score
-per run, per config or per group (a leaderboard, by a config, or by a group such as document length)
+per run, per config or per group (a leaderboard, by a config, by a group such as document length)
 is a table or chart in the Metrics-center visuals of the experiment whose runs recorded it
-(`overview-visuals`); the project page shows each experiment's charts too. A pane
-is for whatever important data is left, chart or not: for example each frame's score under two
-models, before/after images, the PDFs a run wrote, why tasks did not finish.
+(`overview-visuals`); the project page shows each experiment's charts too. A pane is for the
+important data left, chart or not: each frame's score under two models, before/after images, the
+PDFs a run wrote, why tasks did not finish.
 
 A score per group that no run has logged yet is still a built-in chart:
 
-1. The run records the score once per group, under its own key, with a dimension of a few values:
-   the group's mean, never one call per task and never a task id as the dimension
-   (`probe.log({"eval/score_by_length": mean}, dimensions={"length": "1-2 pages"})`; for a run that
-   already ended, `probe log RUN eval/score_by_length=0.74 --dim 'length=1-2 pages' --derived --producer <what computed it> --step <its last step>`).
-2. Then chart it: a `bar` with `x: {dimension: "length"}` (`probe visuals set`; where the daemon
-   records, ask its writer: `probe ask --writer "<the chart>"`).
+1. The run logs the group's mean once per group, under its own key, with a dimension of a few
+   values; never one call per task, never a task id as the dimension
+   (`probe.log({"eval/score_by_length": mean}, dimensions={"length": "1-2 pages"})`). For a run that
+   already ended, `probe log` the same value with that dimension, marked derived with what
+   computed it, at the run's last step.
+2. Chart it as a `bar` with `x: {dimension: "length"}` (`probe visuals set`; where the daemon
+   records, ask its writer with `probe ask --writer`).
 
 A pane shows rows, files and the server's `totals` as they are; it never averages `samples` rows
 into a per-run or per-group score.
 
 ## When to write one
 
-- A project's canvas preview, the pane its box on the canvas shows, is its own job: `write-preview`.
+- A project's canvas preview (the pane its box on the canvas shows) is `write-preview`'s job.
 - When results land, before you report them: if something important can't be shown by a built-in
-  view, write a pane. Nobody needs to ask for it. Only while Probe records this chat (the daemon
-  records it, or you took over inline): while Probe is `read` or `off`, or after it refuses a pane
-  command, skip it and say in one line that a pane would help. Never add `--directed` to a pane
-  nobody asked for.
-- Run `probe pane list <project-or-experiment>` first. Replace only a pane whose slug you pushed in
-  this chat; every other pane is someone else's (when unsure, it is) and stays as it is, and a new
-  pane shows only what it doesn't. A new pane's slug must not be in the list: a push to a taken slug
-  replaces that pane for good. One new pane per question.
+  view, write a pane, unasked. Only while Probe records this chat (the daemon records it, or you
+  took over inline): while Probe is `read` or `off`, or after it refuses a pane command, skip it
+  and say in one line that a pane would help. Never add `--directed` to a pane nobody asked for.
+- Run `probe pane list` first. Replace only a pane whose slug you pushed in this chat; every other
+  pane is someone else's (when unsure, it is) and stays, and a new pane shows only what it doesn't.
+  A new slug must not be in the list: a push to a taken slug replaces that pane for good. One new
+  pane per question.
 - Push only when `probe pane data` shows the rows the pane reads, each file by its name on its run.
-  A writer's reply, or an ask that is still looking, is not proof. Then tell the researcher in one
-  line, with the `url` the push printed. If the attach or the push fails, report the results in text
-  and say the pane wasn't made; never give a link for it.
-- When the project or experiment already holds 8, ask the researcher which one to replace; with
+  A writer's reply, or an ask still looking, is not proof. Then tell the researcher in one line,
+  with the `url` the push printed. If the attach or the push fails, report the results in text and
+  say the pane wasn't made; never give a link for it.
+- A project or experiment holds 8. When it is full, ask the researcher which one to replace; with
   nobody to ask (a script or a sweep), skip the pane and say so.
 
 ## 1. Put the data on the runs
 
-A pane reads only what its runs hold: their metrics, spans and attached files. A run that writes
-its results to files attaches them (`probe.log_artifact("eval/results.jsonl", path=...)` in the
-script). Results still only on disk from a run that ended: where the daemon records, ask its writer
-to attach them and wait for its answer (`probe ask --writer --wait "attach results/frames.jsonl to run <run-id>"`);
-otherwise `probe artifact add <run-id> <path>`. Whichever way it is attached, attach only result
-files the run wrote, each by name: never env, config or key files, logs, or results holding secrets
-or data the researcher hasn't shared with the team.
+A pane reads only what its runs hold: metrics, spans and attached files. A run that writes results
+to files attaches them (`probe.log_artifact("eval/results.jsonl", path=...)`). Results still only on
+disk from a run that ended: where the daemon records, ask its writer to attach them and wait for
+its answer (`probe ask --writer --wait`); otherwise `probe artifact add`. Attach only result files the run wrote, each by name:
+never env, config or key files, logs, or results holding secrets or data the researcher hasn't
+shared with the team.
 
-Per-task results are best as one rollout span per task, its scores in `attributes`, its output
-files linked to it:
+Per-task results work best as one rollout span per task, scores in `attributes`, output files
+linked to it:
 
 ```python
 with probe.span("rollout", name=task.id, external_key=task.id) as span:
@@ -69,13 +67,12 @@ with probe.span("rollout", name=task.id, external_key=task.id) as span:
     probe.log_artifact(f"eval/{task.id}/after.png", path=out.image, span_id=span)
 ```
 
-A run that writes Word files should also save a PDF of each, so a pane can show its exact look
-(`soffice --headless --convert-to pdf --outdir out/ out/after.docx`), and log both to the span.
+A run that writes Word files also saves a PDF of each, so a pane can show the exact look
+(`soffice --headless --convert-to pdf --outdir out/ out/after.docx`), and logs both to the span.
 
-A sample is `failed` only when an exception escapes the `with` block; setting `unfinished_reason`
-alone leaves it `completed`, so count why tasks did not finish by that attribute, not by status.
-From a shell, `probe span add RUN --type rollout ...` prints the span id; upload a file to it with
-`--span <span id>`.
+A sample is `failed` only when an exception escapes the `with` block; `unfinished_reason` alone
+leaves it `completed`, so count why tasks did not finish by that attribute, not by status. From a
+shell, `probe span add` prints the span id; `probe artifact add` can attach a file to that span.
 
 ## 2. Write the recipe and check it
 
@@ -90,7 +87,7 @@ From a shell, `probe span add RUN --type rollout ...` prints the span id; upload
 
 `runs` is `"scope"` (the runs in view) or a list of run ids. `files` filters by `prefix`, `name`
 glob, `span` type and `kind` (an artifact kind such as `evaluation`; there is no `image` kind, so
-match images by `name`, `*.png`). Each source's rows, as the server returns them:
+match images by `name`, `*.png`). Each source's rows:
 
 - `runs`: `id`, `name`, `status`, `experiment_id`, `created_at`, `locked`, `config{}` (null for a
   locked run, or one past the size cap, named in `cut`), `scalars{"<key>": {last, min, max, step}}`
@@ -100,42 +97,35 @@ match images by `name`, `*.png`). Each source's rows, as the server returns them
   `ended_at`, `fields{"attributes.score": 0.8}`. A null or missing attribute is left out of
   `fields`.
 - `files`: `id`, `run_id`, `name`, `kind`, `content_type`, `size_bytes`, `span_id`, `step`,
-  `created_at`: a file belongs to the sample whose `id` is its `span_id`.
+  `created_at`; a file belongs to the sample whose `id` is its `span_id`.
 
-See what it resolves to before writing code:
+Before writing code, see what an unsaved recipe resolves to with `probe pane data`. Its preview
+gives each entry's `state` (`ok`, `partial`, `too_large`), `rows_total` and first rows, and a
+line's first and last points (`points_total`), long values cut. A samples entry adds `totals`: per
+run, `total` and `counts{"status" or field: {values: [{value, count}], other}}` over ALL its
+rollout spans, exact even when rows are cut. Spans without the field count under `value: null`:
+drop that bucket when counting reasons.
 
-```
-probe pane data <project-or-experiment> --recipe recipe.json [--runs <run-id>,<run-id>]
-```
-
-It prints a preview: each entry's `state` (`ok`, `partial`, `too_large`), `rows_total` and first
-rows, a line's first and last points (`points_total`), long values cut; `--full` prints it all. A
-samples entry adds `totals`: per run, `total` and `counts{"status" or field: {values: [{value,
-count}], other}}` over ALL its rollout spans, exact even when rows are cut. Spans without the field
-count under `value: null`: drop that bucket when counting reasons.
-
-`unmatched` names the keys no readable run has, and a samples entry's `unseen_fields` the fields not
-in the `rows_read` rows read: a typo, or not logged yet (`state` stays `ok`). Take real names from a
-run: `probe run series <run-id>` lists its metric keys, `probe span list <run-id> --type rollout
---limit 3` shows its samples' `attributes` (not the RL samples command: those are RL samples).
+`unmatched` names the keys no readable run has, and a samples entry's `unseen_fields` the fields
+not in the rows read: a typo, or not logged yet (`state` stays `ok`). Take real names from a run:
+`probe run series` lists its metric keys; `probe span list` on a few rollout spans shows their
+`attributes` (not the RL samples command).
 
 ## 3. Write the code
 
-- A pane is an HTML fragment, the inside of a page: no `<!doctype>`, `<html>`, `<head>`, `<body>`
-  or `<!-- comments -->`. Start with your markup, `<style>` and `<script>` tags.
+- A pane is an HTML fragment: no `<!doctype>`, `<html>`, `<head>`, `<body>` or `<!-- comments -->`.
+  Start with your markup, `<style>` and `<script>` tags.
 - `PROBE.runs('variants')`, `PROBE.samples('tasks')`, `PROBE.files('after')` (and `PROBE.series(id)`
   for a `series` entry) return that entry. Name each id literally and read every entry the recipe has.
-- `PROBE.image(row)` resolves to a `data:` URL; `PROBE.text(row)` to text (CSV and JSONL too);
+- `PROBE.image(row)` resolves to a `data:` URL, `PROBE.text(row)` to text (CSV and JSONL too),
   `PROBE.json(row)` to parsed JSON. They read only rows of the pane's own `files` entries. Each can
   reject (`budget`, `not_in_files`, `too_large`, `unavailable`): catch it and draw a placeholder, or
   the whole pane shows as failed. Text and JSON stop at 1 MiB: read a bigger result file with
   `PROBE.bytes(row)` and `new TextDecoder().decode(bytes)`.
 - `PROBE.bytes(row)` resolves to an `ArrayBuffer` of the file's original bytes (a PDF, a Word
-  file, any binary up to 25 MiB; bigger rejects `too_large`, unread when its `size_bytes` is known)
-  for a library to draw.
-- Images: create the `<img>` in script and set its `src` from `PROBE.image(row)`. An `<img>` in
-  the markup is refused (its `src` is not a `data:` URL yet). A `<script>` is not a module, so
-  wrap `await` in a function:
+  file, any binary up to 25 MiB; bigger rejects `too_large`) for a library to draw.
+- Images: create the `<img>` in script and set its `src` from `PROBE.image(row)`; an `<img>` in
+  the markup is refused. A `<script>` is not a module, so wrap `await` in a function:
 
   ```js
   (async function () {
@@ -146,31 +136,29 @@ run: `probe run series <run-id>` lists its metric keys, `probe span list <run-id
   })();
   ```
 - A `partial` entry still draws what it has; say it was cut.
-- Color each run with its `color` from `PROBE_DATA.runs` (match by `id`), so the pane matches the
-  explorer. The dashboard adds it, so `probe pane data` does not show it, and it can be null: keep
-  a fallback palette.
+- Color each run with its `color` from `PROBE_DATA.runs` (match by `id`) so the pane matches the
+  explorer. The dashboard adds it (`probe pane data` does not show it) and it can be null: keep a
+  fallback palette.
 - The frame reaches no network: no `fetch`, XHR, WebSocket or `import()`, no `eval` or
   `new Function`, no `postMessage`, no cookies. Load a library as one exact-version cdnjs build,
   `<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>` (not Plotly
-  or Vega: they need `eval`). A library that ships only as a module loads by its src,
+  or Vega: they need `eval`). A module-only library loads by its src,
   `<script type="module" src=".../pdf.min.mjs"></script>`; its global exists from
   `DOMContentLoaded` on.
 - Buttons, `<select>`, and checkboxes and sliders written as markup (`<input type="checkbox">`,
   `<input type="range">`) are fine; never `createElement('input')`. No text fields,
   `contenteditable` or key listeners. A `<script>` takes only `src` (plus `type="module"` beside a
   library's `src`); attach handlers with `addEventListener`, never `on*` attributes.
-- Look: start with the content. The dashboard prints the title above it, so don't repeat it. No
-  outer border, card or box, and no inner scrollbar: the pane sits on the page and grows to its
-  content. Use the host's colors (`--ov-fg`, `--ov-muted`, `--ov-line`, `--ov-accent`,
-  `--ov-good`, `--ov-bad`, and the chart hues `--ov-c1`...`--ov-c8` for fills and marks, never
-  text); for design, `artifact-design`.
+- Look: start with the content; the dashboard prints the title above it. No outer border, card or
+  box, and no inner scrollbar: the pane grows to its content. Use the host's colors (`--ov-fg`,
+  `--ov-muted`, `--ov-line`, `--ov-accent`, `--ov-good`, `--ov-bad`, and the chart hues
+  `--ov-c1`...`--ov-c8` for fills and marks, never text); for design, `artifact-design`.
 
 ## 4. Live runs, documents, click-through
 
-- **Live.** While a run in view is still going, the dashboard reads the pane's data again every
-  30 s. Redraw it by passing your draw function to `PROBE.onData`; the reads above answer the new
-  data, and your own controls (a slider, a picked tab) keep their state. Without it the pane keeps
-  its first picture until someone clicks refresh.
+- **Live.** While a run in view is going, the dashboard reads the pane's data again every 30 s.
+  Pass your draw function to `PROBE.onData`; the reads above answer the new data, and your own
+  controls keep their state. Without it the pane keeps its first picture until someone refreshes.
 
   ```js
   function draw() { renderTable(PROBE.samples('tasks').rows, currentFilter); }
@@ -203,51 +191,43 @@ run: `probe run series <run-id>` lists its metric keys, `probe span list <run-id
   (cdnjs `jszip/3.10.1/jszip.min.js`), read `word/document.xml`, and compare with jsdiff
   (cdnjs `jsdiff/8.0.2/diff.min.js`, global `Diff`): `Diff.diffArrays` over paragraph texts finds
   the changed paragraphs, `Diff.diffWordsWithSpace` the changed words, and comparing each run's
-  `<w:b/>` and `<w:i/>` and each paragraph's `<w:jc>` shows formatting changes. Show it git-style: removed lines red,
-  added green, unchanged paragraphs folded. The raw XML diff (`Diff.diffArrays` over its lines) is
-  what the model wrote.
+  `<w:b/>` and `<w:i/>` and each paragraph's `<w:jc>` shows formatting changes. Show it git-style:
+  removed lines red, added green, unchanged paragraphs folded. The raw XML diff (`Diff.diffArrays`
+  over its lines) is what the model wrote.
 - **Click-through.** `PROBE.open(ref, {newTab})` opens a run (`{run: id}`: a `runs` row's `id`, any
   other row's `run_id`), a sample's trial page (`{sample: {run: row.run_id, id: row.id}}`) or a
-  file's page (`{file: row.id}`). Call it from a click handler: it opens only right after a click
-  in the pane, once per click, and only what the pane's data holds; otherwise it rejects
-  (`no_gesture`, `not_in_data`). Catch it, or the whole pane shows as failed:
-  `PROBE.open(ref).catch(function () {})`.
+  file's page (`{file: row.id}`). It opens only right after a click in the pane, once per click,
+  and only what the pane's data holds; otherwise it rejects (`no_gesture`, `not_in_data`). Catch
+  it, or the whole pane shows as failed: `PROBE.open(ref).catch(function () {})`.
 
 ## 5. Push it
 
 Check first, then save:
 
 ```
-probe pane push <project-or-experiment> <slug> --html pane.html --recipe recipe.json --check
-probe pane push <project-or-experiment> <slug> --html pane.html --recipe recipe.json [--title "Before / after"] [--position 0]
+probe pane push <scope> <slug> --html pane.html --recipe recipe.json --check
+probe pane push <scope> <slug> --html pane.html --recipe recipe.json
 ```
 
-`--check` saves nothing and reports the same problems a push would, all at once, each with its line:
-fix them all, check again, then push without it. A refused push names the same problems.
+The scope is the project or experiment slug, or a run as `id:<uuid>`. `--check` saves nothing and
+lists every problem with its line: fix them all, check again, then push without it. A refused push names the same problems,
+including a browser check's failing width, state and error; a warning means that check could not
+run and the pane was saved unchecked. A new pane goes last unless you give it a place. The answer's
+`url` is the page the pane is on.
 
-The same slug replaces the pane (the answer says `replaced`, with the `previous_updated_at`), so
-pushing again is safe. A project or experiment holds 8. A new pane goes last; `--position N` sets
-its place, 0 first. A push first opens the pane in a browser at every width; a refusal from that
-names the width, state and error (fix it and push again), and a warning means the check could not
-run and the pane was saved unchecked. The answer's `url` is the page the pane is on. Add `--json`
-to any pane command for a typed refusal (`code` and message) on stdout.
+Pushing the same slug again replaces the pane (the answer says `replaced`), so a retry is safe. To
+change a pane later, `probe pane get` it into a folder (its HTML and recipe), edit both and push
+them back; a re-push keeps the title unless you give a new one.
 
-To change a pane later, round-trip it: `probe pane get <project-or-experiment> <slug> --out DIR`
-writes `DIR/<slug>.html` and `DIR/<slug>.json` (its recipe); edit them and push both back. A
-re-push without `--title` keeps the title. `pane get` alone prints the pane's details without its
-HTML (`html_chars`); `--html` prints the HTML too. `probe pane data <project-or-experiment> <slug>`
-reads a saved pane's data and `probe pane list <project-or-experiment>` lists the panes.
-
-`probe pane rm <project-or-experiment> <slug> --yes` deletes a pane for good: there is no trash,
-so run `pane get ... --out DIR` first to keep a copy. Run it only when the researcher asks (an
-agent cannot answer its prompt, so it needs `--yes`). Its runs and their data are untouched.
+`probe pane rm` deletes a pane for good, with no trash: `probe pane get` it into a folder first.
+Run it only when the researcher asks; then pass `--yes`, since an agent cannot answer its prompt.
+Its runs and their data are untouched.
 
 Pin a view only when the researcher asks, and once: pins sit at the top of the project (a run's
-view: the run's page) for the whole team, 24 at most, so pinning and unpinning take `--directed`. `probe pane push ... --pin
---directed` pins the pane it saves; `probe pin add <project-or-experiment> --pane <slug> --directed`
-pins a saved one (or `--chart <metric>`, `--key-metrics`, `--parallel`); `probe pin list <project>`
-reads them and `probe pin rm <project> <pin-id> --directed` unpins. Never pin from a script or a
-sweep that runs again: a pin someone removed would come back. When Pinned is full, ask the
+view: the run's page) for the whole team, 24 at most, so pinning and unpinning take `--directed`
+(`probe pane push` can pin the pane it saves; `probe pin add` pins a saved pane, a metric's chart,
+the key metrics or the parallel plot; `probe pin list`, `probe pin rm`). Never pin from a script or
+a sweep that runs again: a pin someone removed would come back. When Pinned is full, ask the
 researcher which view to unpin.
 
 From a script or notebook, the SDK does the same:

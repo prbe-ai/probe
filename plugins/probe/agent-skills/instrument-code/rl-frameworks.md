@@ -1,10 +1,9 @@
 # RL frameworks and Harbor
 
-Lookup for `instrument-code`: what to paste for each trainer Probe has an adapter for. Each records the
-trainer's metrics AND every attempt (a rollout, a trajectory) as a **sample**: its task and scenario, reward
-and parts, which weights made it, which step trained on it, and whether it `passed`, `failed` (graded below
-the full reward) or hit an `error` (never graded). Read your framework's section, then run CHECK THE CAPTURE
-on a two-step run before the long one.
+What to paste for each trainer Probe has an adapter for. Each records the trainer's metrics AND every attempt
+(a rollout, a trajectory) as a **sample**: task and scenario, reward and parts, the weights that made it, the
+step that trained on it, and `passed`, `failed` (graded below full reward) or `error` (never graded). Read your
+framework's section, then run CHECK THE CAPTURE on a two-step run before the long one.
 
 | framework | install where it trains | the door |
 |---|---|---|
@@ -18,21 +17,19 @@ on a two-step run before the long one.
 ## RULES FOR ALL OF THEM:
 
 - **The launchers keep THE ONE RULE for you.** Miles' and verl's launchers and SkyRL's entrypoint open the
-  run BEFORE Ray starts and put Probe's `worker_process_setup_hook`, the `PROBE_*` settings and the run id in
-  the job's runtime env, so every Ray actor configures itself. A `register()` in the driver alone records
-  nothing from the actors. Let the framework start Ray: verl, in a process where Ray is already up, runs
-  without Probe and says so.
+  run BEFORE Ray starts and put Probe's setup hook, `PROBE_*` settings and run id in the job's runtime env. A
+  `register()` in the driver alone records nothing from the actors. Let the framework start Ray: verl, where
+  Ray is already up, runs without Probe and says so.
 - **Project.** Set `PROBE_PROJECT=<slug>` (ART and TRL also take `project=`); Miles also reads
   `PROBE_EXPERIMENT`, and defaults to project `miles`, experiment `miles-runs`. Under `probe exec` (or any
   `PROBE_RUN_ID`) they record onto that run instead.
-- **Credentials in Ray.** Ray's dashboard shows a job's runtime env, so a launcher never copies your token
-  into it: workers get a token for this run only, minted from yours (or the run token `probe exec` gave the
-  launcher). A project-bound token cannot mint one: set `PROBE_MILES_WORKER_TOKEN`,
+- **Credentials in Ray.** Ray's dashboard shows a job's runtime env, so workers get a token for this run only,
+  minted from yours (or `probe exec`'s run token). A project-bound token cannot mint one: set `PROBE_MILES_WORKER_TOKEN`,
   `PROBE_SKYRL_WORKER_TOKEN` or `PROBE_VERL_WORKER_TOKEN` to the credential workers should use, knowing the
   dashboard shows it. With none, workers warn, record nothing and train on.
 - **Task and scenario.** The scenario is the outside values a task is posed under (`{"set": "P2", "as_of":
   "2024-06-30"}`). It is part of the task's identity: the same prompt under two scenarios is two tasks, and
-  every read filters on it (`--where scenario.set=P2`). With no `task_id`, the task key is a hash of the
+  every samples read can filter on it. With no `task_id`, the task key is a hash of the
   prompt. Miles: put `task_id` in the prompt file's metadata. A sample is running before your agent function
   returns, so a `task_id` that only the agent function sets leaves its running row on that hash (Probe's Harbor
   agent, `probe.connectors.miles.harbor_agent.run`, is handled: it names `local:<instance_id>`).
@@ -46,11 +43,10 @@ on a two-step run before the long one.
   | TRL | dataset column `task_id` | dataset columns `task_name`, `task_description` | a `scenario` column, or columns named by `track(trainer, scenario=["set", "as_of"])`; `label` / `answer` / `solution` / `ground_truth` is the label |
   | Harbor | Harbor's task id (`local:` / `git:` / `package:`) | Harbor's task name (the task folder or package): name folders in plain words | dataset, its version and hash, the task digest: all automatic |
 
-- **Name every task when you set its `task_id`.** This is part of setup, never a later pass: the RL page
-  leads each task row with `task_name` (the key shows in grey under it) and its Summary shows
-  `task_description` (markdown, what the task tests). A name is plain words, 3-8 of them, saying what the
-  problem is about, never the key's numbers; siblings never share a name. In a dataset grouped by
-  template, name the template and add the instance number, and describe the template once:
+- **Name every task when you set its `task_id`**, as part of setup: the RL page leads each task row with
+  `task_name` and its Summary shows `task_description` (markdown, what the task tests). A name is 3-8 plain
+  words on what the problem is about, never the key's numbers; siblings never share one. In a dataset grouped
+  by template, name the template plus the instance number, and describe the template once:
 
   ```python
   row["task_id"] = f"p1:{template}:{instance}"                          # p1:58:92
@@ -62,11 +58,11 @@ on a two-step run before the long one.
 
 - **Resume.** A relaunch from a checkpoint saved at step k reopens the SAME run with `Rewind(step=k+1)`:
   metric points from k+1 on are deleted and written again, and the earlier attempt's samples past k leave
-  every read (`probe samples list RUN --include rewound` shows them). Keep the run's identity the same
+  every read (`probe samples list` can still include them). Keep the run's identity the same
   across relaunches (each section says which) and pass no `on_conflict` yourself.
 - **No W&B.** Each adapter drops W&B or refuses to start beside it; nothing needs a W&B key.
-- **Fail open.** A Probe error never stops training: a hook warns once, counts it, and the capture answers
-  no. `PROBE_MODE=disabled` turns every adapter off.
+- **Fail open.** A Probe error never stops training: a hook warns once and the capture answers no.
+  `PROBE_MODE=disabled` turns every adapter off.
 - **Per-token arrays** (token ids, logprobs, entropy, the loss mask) are on by default;
   `PROBE_SAMPLES_PER_TOKEN=off` or `sample:0.1` for long agentic runs (error samples are always kept).
 
@@ -126,9 +122,8 @@ python -m probe.connectors.miles.launch train_async.py <your Miles args> --save 
   +            "trial_id": str(result.id),
   ```
 
-  A joined sample's metadata holds `external_key` (the `TrialResult.id`), `task_id` (Harbor's task key, e.g.
-  `local:<task dir>`) and `trial_dir`; Probe shows one sample with Miles' tokens and reward and Harbor's
-  trajectory and files. Each trial is staged under `PROBE_CAPTURES_DIR` (default `probe-captures` beside the
+  Probe then shows one sample with Miles' tokens and reward and Harbor's trajectory and files (its metadata:
+  `external_key` = the `TrialResult.id`, `task_id`, `trial_dir`). Each trial is staged under `PROBE_CAPTURES_DIR` (default `probe-captures` beside the
   trials folder, so Miles must see that path): run `probe trial watch <captures>` beside the job. Never fails a
   rollout: an unpatched server warns once and returns Miles' plain fields; a failed staging goes to
   `<captures>/restage.jsonl`, and after the job `python -m probe.connectors.miles.harbor_agent restage
@@ -221,17 +216,15 @@ track(trainer, project="gsm-posttrain")    # the samples, on the same run
 trainer.train()
 ```
 
-- Covers `GRPOTrainer`, `RLOOTrainer`, the experimental `AsyncGRPOTrainer`, and distillation
+- Covers `GRPOTrainer`, `RLOOTrainer`, the experimental `AsyncGRPOTrainer`, distillation
   (`DistillationTrainer`, `ServerDistillationTrainer`, `GKDTrainer`, the experimental `GOLDTrainer`,
   `AsyncDistillationTrainer`); `SFTTrainer` with `track(trainer, record_sft=True)` records each example once.
 - **Distillation.** Name a teacher that is a Probe checkpoint: `track(trainer,
   teacher="checkpoint:<run>@step<N>")`, and the student run derives from it. GKD records teacher-written
   sequences only with `seq_kd=True`.
-- **Call `track()` on every process** (the same script runs on each). The main process records the samples;
-  each process sends its own per-sample training metrics (GRPO's grpo/bnpo/dr_grpo/dapo loss terms and
-  diagnostics; SFT with `record_sft=True`) as `trl-train-<rank>`, finding the run through the job's own
-  torch.distributed store (no shared `output_dir` needed). A process without `track()` sends none: its updates
-  read partial. Trainers alternated in a loop: `track()` each one again before every `train()`.
+- **Call `track()` on every process.** The main process records the samples; each process sends its own
+  per-sample training metrics (GRPO loss terms and diagnostics; SFT with `record_sft=True`) as
+  `trl-train-<rank>`. A process without `track()` sends none: its updates read partial. Trainers alternated in a loop: `track()` each one again before every `train()`.
   W&B in `report_to` is taken out, with a warning.
 - **Run identity and resume**: `trl:<run_name>` (else the output folder's name);
   `trainer.train(resume_from_checkpoint=...)` at step k reopens it rewound to k+1.
@@ -244,7 +237,7 @@ harbor run <your usual flags> --plugin probe --pk run=$RUN --pk step=0
 #   --pk model_ref=checkpoint:<run>@step<N>   the agent serves a Probe checkpoint: this run derives from it
 #   --pk project=<slug>                       no --pk run: a run keyed by the job id (job resume continues it)
 #   --pk files=false                          samples only, no trial files
-probe trial add $RUN jobs/<job> --step 0  # a job already run; --whole-run when the job is the whole run
+probe trial add $RUN jobs/<job>          # a job already run (it can also declare the job the whole run)
 ```
 
 - One sample per attempt, retries kept (the earlier one reads `superseded`); a multi-step trial is one
@@ -292,14 +285,12 @@ run.samples.plan(final_step=steps - 1, is_closed=True)
 
 On a two-step run, before the long one:
 
-```bash
-probe samples capture $RUN                                      # yes, or no with the reasons
-probe samples stats $RUN --by step --measure mean_reward,count  # = the trainer's own mean reward per step
-probe samples list $RUN --result error --limit 5                # what broke; one sample's log: probe samples logs SAMPLE
-probe samples list $RUN --result failed --limit 3               # then: probe samples show SAMPLE --json | grep failure_reason
-probe samples stats $RUN --by host --where result=error         # where errors come from (also engine, worker, error_reason)
-probe checkpoint best $RUN --metric eval/val                    # the checkpoints landed, with their lineage
-```
+- `probe samples capture`: yes, or no with the reasons.
+- `probe samples stats` by step: its mean reward must equal the trainer's own per step.
+- `probe samples list` of error and failed samples: what broke (`probe samples logs` for one sample's log,
+  `probe samples show` for its `failure_reason`); `probe samples stats` of errors by host, engine, worker or
+  error reason: where they come from.
+- `probe checkpoint best`: the checkpoints landed, with their lineage.
 
 - Capture answers yes or no, never unknown, with reason codes: `in_progress`, `unsealed_step` (a step no
   producer closed), `missing_samples` (fewer arrived than a seal declared), `not_committed`,
@@ -309,7 +300,7 @@ probe checkpoint best $RUN --metric eval/val                    # the checkpoint
 - The stats mean must equal the framework's own logged mean (Miles `rollout/raw_reward`, ART `reward`) over
   the same steps: a gap means samples went missing or were counted twice. `error` samples are left out of
   means and counted beside them.
-- A checker that writes reasons: each failed sample's `show --json` has `failure_reason`. None means
+- A checker that writes reasons: each failed sample has a `failure_reason`. None means
   `verifier/reason.txt` was not written (or is empty), or the loop sent no `failure_reason`; fix that before the
   long run, or the Failures tab says "No reason recorded".
 - `probe samples tasks $RUN` lists one task per prompt and scenario. A task per attempt means the prompt
@@ -318,24 +309,20 @@ probe checkpoint best $RUN --metric eval/val                    # the checkpoint
 
 ## LIVE: WHILE IT RUNS:
 
-Every adapter also writes each rollout as a LIVE sample, from its start to its end. Read and act on them:
+Every adapter also writes each rollout as a LIVE sample, from start to end:
 
-```bash
-probe samples live $RUN                     # running now: elapsed, host, phase, what the agent is doing
-probe samples live $RUN --hung --json       # no progress for 10 min (--hung-after 3m), or a silent producer
-probe samples live $RUN --slow              # slower than its task's p90 and 2x its step's median
-probe samples live $RUN --failing           # errors in the last 10 min by reason, host and task
-probe samples live $RUN --state ended       # how each ended and why; abandoned = a crash or a resume, superseded = retried
-probe samples tail $RUN SAMPLE              # its turns as they happen, until it ends (where watch works)
-probe samples cancel $RUN SAMPLE --reason "tool loop"   # or retry, where its framework allows (table); prints the answer
-probe samples commands $RUN                 # who asked what, and what happened
-probe watch $RUN --until samples.live:state=hung --timeout 3600   # sleep until one hangs (exit 0)
-```
+- `probe samples live`: what runs now (elapsed, host, phase, what the agent is doing); filtered to hung (no
+  progress for 10 min, or a silent producer), slow, failing (errors by reason, host and task), or ended (how
+  each ended: abandoned is a crash or a resume, superseded is retried).
+- `probe samples tail`: one sample's turns as they happen (where watch works).
+- `probe samples cancel` or `probe samples retry`, where its framework allows (table): prints the answer.
+- `probe samples commands`: who asked what, and what happened.
+- `probe watch` until a `samples.live` event with state hung: sleeps until one hangs. Give it a `--timeout`: it
+  has none of its own.
 
-- Judged on the server's clock: a box with a wrong clock never makes a sample look hung, and a crash or a resume
-  reads `abandoned`, never hung.
+- Judged on the server's clock; a crash or a resume reads `abandoned`, never hung.
 - The agent that launched the run hears of hung samples through the Probe daemon (`samples_hung`). With no daemon
-  (inline, or a plain script), wait for them: `probe watch $RUN --until samples.live:state=hung`.
+  (inline, or a plain script), wait for them with `probe watch`.
 - An ended sample shows its outcome and why: `dropped (group_has_aborted)` is a Miles sibling dropped with a canceled
   sample's group.
 - An ask a framework cannot do safely is refused at once, with why; one no running producer took reads `expired`.
@@ -386,10 +373,5 @@ run.samples.attempt_end(key, "passed" if result.reward >= 1.0 else "failed")
 - Cancel is off: `live_url(..., can_cancel=True)` lets `probe samples cancel` stop that rollout (its calls then answer
   `403 probe_canceled`, which the OpenAI and Anthropic SDKs never retry). Only where your loop ends a rollout cleanly
   on that error.
-- Another language, or a launcher that cannot host it: run it beside the harness.
-
-```bash
-probe samples proxy --upstream http://router:30000/v1 --run $RUN   # prints one JSON line; "control" is $CONTROL
-curl -s -X POST "$CONTROL/rollouts" -d '{"task_key": "gsm-17"}'    # {"attempt_key", "url"}: url is the agent's
-curl -s -X POST "$CONTROL/rollouts/$KEY/end" -d '{"outcome": "passed"}'
-```
+- Another language, or a launcher that cannot host it: run `probe samples proxy` beside the harness; its help
+  gives the two control calls that start and end a rollout.

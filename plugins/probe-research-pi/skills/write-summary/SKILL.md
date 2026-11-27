@@ -4,7 +4,7 @@ description: Keep each project's and experiment's page - what people read to cat
 ---
 Each project and experiment has a short Summary in the dashboard. Edit its checked-out draft and push it with `probe summary push`.
 
-The draft is checked out for you when work first lands on one (the path is printed); `probe summary checkout --project <slug>` (or `--experiment <slug>`) loads one by hand. Edit it, then push once with the same flag. Write the first page when you create one; update it on a result or a change of direction. Linking a project `--part-of` another: update that page to name the new part. When what a project is about changes, or its runs first hold a real example, rewrite its canvas preview too (`write-preview`, when shown to you). A `.md` draft (older CLI) takes Markdown, never html.
+The draft is checked out for you when work first lands on one (the path is printed); `probe summary checkout` loads one by hand. Edit it, then push once, naming the same project or experiment. Write the first page when you create one; update it on a result or a change of direction. A project made part of another: update that page to name the new part. When what a project is about changes, or its runs first hold a real example, rewrite its canvas preview too (`write-preview`, when shown to you). A `.md` draft (older CLI) takes Markdown, never html.
 
 # What to write
 

@@ -10,11 +10,7 @@ reports each machine's GPUs and jobs to Probe). It changes nothing until the per
 Only a team owner or admin can register GPUs: if `probe whoami` shows another `role`, tell the
 person to ask an owner or admin, and stop.
 
-1. See what it finds and the exact change for each target:
-   ```bash
-   probe compute connect --dry-run
-   ```
-   Each target shows how it would be connected:
+1. Dry-run it first (`--dry-run`): it shows what it finds and the exact change for each target. Each target shows how it would be connected:
    - **Kubernetes**: probe-node as a DaemonSet (Helm), one pod per node.
    - **SSH host**: probe-node installed on the host.
    - **Pod mode** (Modal, Daytona and other container sandboxes): a wrapper that starts the job
@@ -25,15 +21,10 @@ person to ask an owner or admin, and stop.
      with its own queue keeps it.
 2. Tell the person, in plain words, which targets it found and what each change does. Ask which
    ones to connect, and wait for a clear yes to that plan.
-3. Connect only what they said yes to:
-   ```bash
-   probe compute connect --target <name> --yes
-   ```
-   `--yes` stands for the person's yes, so never pass it before they gave one. If it asks for a
-   browser approval, tell the person to approve it. A failed step is rolled back; show them the error.
+3. Connect only the targets they said yes to, each by `--target <name>`. `--yes` stands for the person's yes, so never pass it
+   before they gave one. If it asks for a browser approval, tell the person to approve it. A failed step is rolled back; show them the error.
    If the cluster access is read-only or refused, say what is missing: rights to install cluster-wide
-   (a namespace, a Secret, a DaemonSet and cluster roles; in practice cluster-admin). Someone who has
-   them runs connect.
+   (a namespace, a Secret, a DaemonSet and cluster roles; in practice cluster-admin). Someone who has them runs connect.
 4. Check: `probe compute clusters` lists the cluster, and `probe compute nodes` lists each machine
    once it reports.
 

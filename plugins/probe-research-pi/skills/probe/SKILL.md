@@ -58,9 +58,6 @@ FYI:
 > from now on (a capture process still running an older tap can upload it
 > until it ends). `/probe [read/on]` to turn back on.
 
-In the `off` state, do not fabricate information - do not report "no info"
-during lookup - clearly state that you couldn't look due to the state.
-
 ## DEFAULTS:
 
 A default is what a NEW session starts at. This conversation's state always

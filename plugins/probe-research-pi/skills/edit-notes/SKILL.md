@@ -27,13 +27,11 @@ The widest entity the fact is true of, no wider: run, experiment, project, paren
 
 ## Entity notes
 
-    probe notes checkout --run <slug>    # prints the path and how full the note is
-    <edit the file>
-    probe notes push --run <slug>        # merges with others' edits
+`probe notes checkout` prints the note's path and how full it is; edit the file; `probe notes push` merges it with others' edits.
 
 - A conflict writes markers and exits 2. Resolve them and push again.
-- One small change without a checkout: `probe notes edit --<entity> <slug> --old "..." --new "..."`. `probe notes append --<entity> <slug> --text "..."` adds at the end.
-- Sub-notes: `--note "<title>"` on checkout, push and show; `probe notes create|rename|delete`. Titles can repeat, so `list` first and use `--note id:<uuid>`.
+- One small change without a checkout: `probe notes edit` swaps exact old text for new; `probe notes append` adds at the end.
+- Sub-notes: checkout, push and show take a sub-note's title; `probe notes create`, `rename`, `delete`. Titles can repeat, so `probe notes list` first and name it by id.
 
 ## Team note
 

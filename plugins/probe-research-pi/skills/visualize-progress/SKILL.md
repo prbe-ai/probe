@@ -58,7 +58,7 @@ happen.
 | conclusion | `conclusion` is non-null | experiment card |
 | reuse check | the name resolves at the shared level | `entity(refs=["artifact:<name>"], view="versions")` |
 | snapshot | `env_ref` set **and** the record resolves | `reproduce` - `execution_record` in `missing` means NOT done |
-| inputs captured | `0 unavailable` | `probe snapshot-restore RUN --verify-only` |
+| inputs captured | `0 unavailable` | `probe snapshot-restore --verify-only` |
 | run open | status `running` | run card |
 | logging | `series` is non-empty | `handoff` |
 | in-run phase | which `span_types` have counts, which `series` prefixes exist | `handoff` |
@@ -118,9 +118,8 @@ handoff. Work with no arc gets no drawing - fixing a data loader bug is a bug.
 
 ## WHAT THIS IS NOT:
 
-- **Not a write.** What it shows as missing or unlogged is registered by
-    `track-work`.
-- **Not a report to file.** It goes in the session; a durable claim goes to
-    `probe notes checkout` / `push`.
+- **Not a write.** `track-work` records what it shows as missing.
+- **Not a report to file.** It goes in the session; a durable claim goes in
+    the notes (`probe notes checkout`, then `push`).
 - **Not a plan of record.** Brief-derived stages change as the work does -
     when one turns out wrong, note it and redraw.
