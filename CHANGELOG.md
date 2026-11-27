@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.672.0
+
+- **Run trace evidence.** The SDK can stage a scrubbed trace document for a new sample, publish verified documents onto existing samples, read a pinned revision, and restore an earlier revision.
+
 ## 0.671.0
 
 - **probe-node selftest points at the working install script.** Its host-mode hint used `download.prbe.ai`, which does not resolve; it now names the GitHub release `node.sh`.
