@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.667.0
+
+- **A chat where the Probe daemon records, set off, now stops deletes, secret printers and workspace changes before they run.** The plugin's hook refuses what the CLI already refused there (`project delete`, `mcp env`, `workspace delete`, ...), and the refusal now says Probe is off instead of claiming the daemon records the chat.
+- **`probe run expect` runs for the coding agent while the Probe daemon records.** Declaring a metric range on its own run was refused by the CLI though the plugin allowed it.
+- **Workspaces made at install or in the desktop app always get a valid slug.** A long name with a space at the cut could make a slug ending in '-' or holding '--'; it no longer does, and a desktop retry still finds a workspace an older CLI made. `probe workspace create` help now says the slug is lowercase words joined by '-' (the display name goes in `--name`).
+
 ## 0.666.0
 
 - **Install completion.** The wizard finishes in the terminal with its import progress and dashboard address. Install checks no longer offer the browser tour.
