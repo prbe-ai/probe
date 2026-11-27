@@ -285,6 +285,8 @@ _SEPARATOR_CHARS = frozenset(";|&()\n")
 #: already removed quotes, so a quoted `'>'` looks the same, and dropping "its
 #: file" would swallow a `;` or a `<(`.
 _REDIRECTIONS = frozenset({">", ">>", "<", "<>", ">|", "&>", "&>>", ">&", "<&", "<<", "<<<"})
+#: What makes a typed word one the shell fills in or globs (guards' `_SHELL_EXPANSION_CHARS`, `_GLOB_CHARS`).
+_SHELL_VALUE_CHARS = frozenset("$`{*?[")
 #: What may precede a `#` that starts a shell comment: a `#` inside a word
 #: (`a#b`, `$#`) is text.
 _WORD_BOUNDARY = frozenset(" \t\n;&|()<>")
@@ -801,7 +803,7 @@ def _asks_help(args: "list[str]") -> bool:
     A token search: the CLI's write gate asks click (`write_gate._asks_help`), and it holds
     wherever that gate judges the same chat and command (`_refuse_off_profile` says where).
     `-h` counts only plainly (`_asks_help_plainly`): as an option's value the command runs."""
-    words = args[: args.index("--")] if "--" in args else args
+    words = _click_words(args)
     return any(
         word == _session_marker.HELP_FLAG and (i == 0 or words[i - 1] not in _REDIRECTIONS)
         for i, word in enumerate(words)
@@ -810,17 +812,36 @@ def _asks_help(args: "list[str]") -> bool:
 
 def _asks_help_plainly(args: "list[str]") -> bool:
     """`--help` or `-h` (`is_help_flag`), minus one click hands to the option before
-    it as its value (`probe wizard --folder --help` runs the wizard). Used where the
-    CLI may not check the same rule on the real argv: the daemon branch (a run's own
-    work skips it) and, in off, wherever `_refuse_off_profile` cannot trust the CLI.
-    There a `--help` after a bare option is checked like any other run."""
-    words = args[: args.index("--")] if "--" in args else args
+    it as its value (`probe wizard --folder --help` runs the wizard). After an option
+    that takes no value (`is_no_value_option`: `--yes`) it is help. Never after a word
+    the shell may change (`_is_unsure`): it may become an option, a `--` or nothing.
+    Used where the CLI may not check the same rule on the real argv: the daemon branch
+    (a run's own work skips it) and, in off, wherever `_refuse_off_profile` cannot
+    trust the CLI. There a `--help` after any other bare option is checked like any other run."""
+    words = _click_words(args)
+    sure = next((i for i, word in enumerate(words) if _is_unsure(word)), len(words))
+    # A warm hook host may hold an older `_session_marker` without it: every bare option may take one.
+    no_value = getattr(_session_marker, "is_no_value_option", None)
     return any(
-        _session_marker.is_help_flag(word, args)
-        and (i == 0 or (words[i - 1] not in _REDIRECTIONS
-                        and (not words[i - 1].startswith("-") or "=" in words[i - 1])))
-        for i, word in enumerate(words)
+        _session_marker.is_help_flag(word, words)
+        and (i == 0 or not words[i - 1].startswith("-") or "=" in words[i - 1]
+             or (no_value is not None and no_value(words[i - 1], words)))
+        for i, word in enumerate(words[:sure])
     )
+
+
+def _is_unsure(word: str) -> bool:
+    """May the shell change this word before the CLI sees it: fill, split or empty it
+    (`$D`, `` `x` ``, `{--,}`, a glob, `~-`), or take it away as a redirection (`> out`;
+    a quoted `'>'` reads the same here)?"""
+    return word in _REDIRECTIONS or word.startswith("~") or not _SHELL_VALUE_CHARS.isdisjoint(word)
+
+
+def _click_words(args: "list[str]") -> "list[str]":
+    """The words before any `--`, less every `--directed`: the CLI takes them out before
+    click parses (`split_directed`)."""
+    words = args[: args.index("--")] if "--" in args else args
+    return [word for word in words if word != _session_marker.DIRECTED_FLAG]
 
 
 READ_GROUPS = _session_marker.READ_GROUPS
@@ -2631,7 +2652,7 @@ def _refuse_off_profile(payload: dict, session_id: str) -> bool:
     for args in _probe_invocations(command):
         words = _session_marker.command_words(args)[:2]
         trusted = (cli_judges and " ".join(words) not in left_to_hook
-                   and _SHELL_VALUE_CHARS.isdisjoint("".join(words)))  # `probe "$G" call` may be `mcp call`
+                   and not any(_is_unsure(word) for word in words))  # `probe "$G" call` may be `mcp call`
         if (_asks_help if trusted else _asks_help_plainly)(args):
             continue
         text = get_off_profile_refusal(fill(args) if trusted else args, session_id)
@@ -2640,10 +2661,6 @@ def _refuse_off_profile(payload: dict, session_id: str) -> bool:
             _refuse(text)
             return True
     return False
-
-
-#: What makes a typed word one the shell fills in (guards' `_SHELL_EXPANSION_CHARS`).
-_SHELL_VALUE_CHARS = frozenset("$`{")
 
 
 def _cli_judges_off(session_id: str) -> bool:

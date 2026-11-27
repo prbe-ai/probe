@@ -1278,7 +1278,8 @@ READ_UNLESS_FLAGS = {"project contributors": frozenset({"--add", "--remove"})}
 
 #: Characters that mark a word the shell still expands (`$F`, `$(...)`, `--{add,x}`).
 #: Glob characters count only in an option's NAME (`--a[d]d`): a literal `[::1]`
-#: in a `--base-url` value is common.
+#: in a `--base-url` value is common. Reading help (`_may_pass_options_on`) counts
+#: them anywhere: there being wrong is only stricter.
 _SHELL_EXPANSION_CHARS = frozenset("$`{")
 _GLOB_CHARS = frozenset("*?[")
 
@@ -1401,12 +1402,73 @@ HELP_FLAGS = frozenset({HELP_FLAG, "-h"})
 
 #: Commands that hand an unknown option on (`ignore_unknown_options`): there `-h`
 #: is an argument and the command runs (`probe daemon worker -h`), so it is no help.
-#: `test_daemon_profile.py` holds this to the CLI's tree.
+#: Also those that read every word after their first argument as an argument
+#: (`allow_interspersed_args` off: `client check`). `test_daemon_profile.py` holds this
+#: to the CLI's tree.
 UNKNOWN_OPTIONS_PASSED = frozenset(
     {"exec", "docs", "cli search", "daemon worker", "daemon override", "daemon session", "daemon task", "run resume",
      # The removed W&B imports take any old argv and only print what replaced them (#5245).
-     "wandb import-local", "wandb import-hosted"}
+     "wandb import-local", "wandb import-hosted", "client check"}
 )
+
+
+def _may_pass_options_on(args: "list[str]") -> bool:
+    """May the command these args name read an option as an argument (`UNKNOWN_OPTIONS_PASSED`)?
+    So may one the shell may yet fill in or split: a word up to its second that holds a `$`,
+    backtick, `{` or glob, or starts with `~` (`probe "$G" worker`, `probe --base-url $U worker`,
+    `probe ~+ worker` with PWD=daemon). Read as click gets them: the CLI takes `--directed` out
+    first (`split_directed`)."""
+    own = [arg for arg in args if arg != DIRECTED_FLAG]
+    found = 0
+    is_value = False
+    for token in own:
+        if token.startswith("~") or not (_SHELL_EXPANSION_CHARS.isdisjoint(token) and _GLOB_CHARS.isdisjoint(token)):
+            return True
+        if is_value:
+            is_value = False
+        elif token.startswith("-"):
+            is_value = not found and token in ROOT_VALUE_OPTIONS
+        else:
+            found += 1
+            if found == 2:
+                break
+    words = command_words(own)[:2]
+    return bool({" ".join(words), " ".join(words[:1])} & UNKNOWN_OPTIONS_PASSED)
+
+
+#: Options that take no value in any command that has them (`--yes`, `--dry-run`): click never
+#: hands one the `--help` after it, so that `--help` is help. `test_daemon_profile.py` holds each
+#: to the CLI's tree. One that takes a value somewhere (`--json`) is not on it.
+NO_VALUE_OPTIONS = frozenset({
+    "--accept-env", "--after-install", "--agent-rules", "--all", "--allow-mismatch",
+    "--allow-missing", "--allow-write", "--ascii", "--async", "--auto-update", "--background",
+    "--backup-unsent", "--brief", "--cancel", "--capture", "--chats-all", "--check", "--clear",
+    "--clear-dead-end", "--curve", "--derived", "--detached-launcher", "--device", "--direct",
+    "--directed", "--discard-unsent", "--down", "--dry-run", "--endpoint-only", "--experimental",
+    "--failing", "--files", "--fix", "--follow", "--force", "--from-evals", "--full", "--held",
+    "--hung", "--import-changed", "--import-unverified", "--include-discovery",
+    "--include-excluded", "--include-unresolved", "--linear-y", "--list", "--log-y",
+    "--no-agent-rules", "--no-auto-update", "--no-browser", "--no-capture",
+    "--no-capture-outputs", "--no-color", "--no-env", "--no-expand", "--no-files", "--no-gpu",
+    "--no-include-unresolved", "--no-plugin", "--no-preview", "--no-tracking", "--no-transcripts",
+    "--no-upload", "--no-verify", "--no-visuals", "--no-wait", "--noise", "--offline", "--once",
+    "--open", "--overlay", "--parallel", "--peek", "--pending", "--pending-only", "--pin",
+    "--plugin", "--preview", "--print", "--probe-remote", "--project-from-env", "--publish",
+    "--pull-only", "--push-only", "--quiet", "--raw", "--readme-embed", "--recommended",
+    "--recursive", "--reference", "--refresh", "--reinstall", "--replace", "--retry-dead",
+    "--review-excluded", "--revoke-all", "--samples", "--send", "--send-back", "--shared",
+    "--show", "--skypilot-sso", "--slow", "--steal", "--steps", "--sync", "--top-level",
+    "--tracking", "--transcripts", "--transcripts-only", "--uninstall", "--until-resume",
+    "--upload", "--use", "--verbose", "--verify", "--verify-only", "--visuals", "--wait",
+    "--wandb-only", "--whole-run", "--writer", "--wrong", "--yes", "-f", "-y"
+})
+
+
+def is_no_value_option(word: str, args: "list[str]") -> bool:
+    """Is `word`, one of these args (after `probe`), an option that takes no value
+    (`NO_VALUE_OPTIONS`)? Not where the command passes unknown options on: there
+    it may be an argument, and so may the `--help` after it."""
+    return word in NO_VALUE_OPTIONS and not _may_pass_options_on(args)
 
 
 def is_help_flag(word: str, args: "list[str]") -> bool:
@@ -1414,10 +1476,7 @@ def is_help_flag(word: str, args: "list[str]") -> bool:
     reads as one (`HELP_FLAGS`)? `-h` is not where the command passes it on."""
     if word == HELP_FLAG:
         return True
-    if word not in HELP_FLAGS:
-        return False
-    words = command_words(args)
-    return not {" ".join(words[:2]), " ".join(words[:1])} & UNKNOWN_OPTIONS_PASSED
+    return word in HELP_FLAGS and not _may_pass_options_on(args)
 
 #: Groups whose whole job is READING research content. Refused only under `off`.
 #: `docs` reads Probe's own docs, not the team's record: a read so that `off`
