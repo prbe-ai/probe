@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.668.0
+
+- **An import's record session answers `probe <command> --help`.** The skills send agents to `--help` for a command's flags; inside the session that records an imported folder, `--help` on a command the session takes now prints the CLI's own help (it said help was not available), and on a command it refuses, the refusal.
+- **Shorter Probe skills.** Every skill now names the Probe command and says when and why to use it; each command's flags come from `probe <command> --help`. Safety rules that name a flag (`--directed`, `--yes` only after the person's yes, `--upload` only when asked, `--authored-by human`) stay.
+
 ## 0.667.0
 
 - **A chat where the Probe daemon records, set off, now stops deletes, secret printers and workspace changes before they run.** The plugin's hook refuses what the CLI already refused there (`project delete`, `mcp env`, `workspace delete`, ...), and the refusal now says Probe is off instead of claiming the daemon records the chat.
