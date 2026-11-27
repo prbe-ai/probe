@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.665.0
+
+- **`probe compute connect` fixes its own wrong-platform installs.** If connect installed probe-node with another platform's settings and it runs on no machine, connect now reinstalls it with the right settings and a fresh token. Installs with your own settings, for another server, running somewhere, or unreadable are left as is. kubectl and helm now use the kubeconfig file the cluster was found in.
+
 ## 0.664.0
 
 - **Your coding agent can manage workspaces while the Probe daemon records the chat.** It can now create, switch, rename and set icons for workspaces itself. Deleting an empty workspace, changing who can write, and limiting this computer to one workspace still wait for your ask (`--directed`).
