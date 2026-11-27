@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.666.0
+
+- **Install completion.** The wizard finishes in the terminal with its import progress and dashboard address. Install checks no longer offer the browser tour.
+
 ## 0.665.0
 
 - **`probe compute connect` fixes its own wrong-platform installs.** If connect installed probe-node with another platform's settings and it runs on no machine, connect now reinstalls it with the right settings and a fresh token. Installs with your own settings, for another server, running somewhere, or unreadable are left as is. kubectl and helm now use the kubeconfig file the cluster was found in.
