@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.670.0
+
+- **`--help` after a flag like `--yes` prints help in every chat where the Probe daemon records.** It was refused in `on` and `read` chats (`probe project delete p --yes --help`).
+
 ## 0.669.0
 
 - **A chat where the Probe daemon records, set off, no longer refuses two safe commands.** `--help` after `--yes` prints help again, and a workspace name or folder in a shell variable (`probe workspace use "$WS"`) is checked by the CLI once the shell fills it in.
