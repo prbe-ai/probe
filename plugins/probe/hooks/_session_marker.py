@@ -1828,6 +1828,15 @@ RESEARCHER_SWITCH = frozenset(
 #: The one switch command an agent may run, with `--directed` (T3): it sets, never flips.
 SWITCH_SET = "session state"
 
+#: What the CLI's write gate leaves to the guard hook alone (`write_gate._refuse_records`): `mcp
+#: call|tools` (the bridge refuses them itself), `session initialize` (the pi host bridge) and the
+#: takeover commands removed in 2026-10-06, which this CLI does not have, and `daemon worker` (the
+#: daemon itself, started with the session's own environment). The hook reads no `--help` given as
+#: a value there as help: no gate would check it.
+CLI_GATE_LEAVES_TO_HOOK = frozenset(
+    {"mcp call", "mcp tools", "session initialize", "session inline", "session daemon", "daemon worker"}
+)
+
 #: How an agent spells this chat's switch and the new-chat default (the npx
 #: spelling: the launcher's floor picks a CLI that strips `--directed`).
 SWITCH_COMMAND = "npx -y probe-research session state <on|read|off|inline> --directed"
@@ -2078,6 +2087,27 @@ def _flag_writes(args: "list[str]", flags: "frozenset[str]") -> bool:
         for arg in args
         for name in [arg.split("=", 1)[0]]
     )
+
+
+#: What a value the shell has yet to fill in reads as (`fill_shell_values`).
+_SHELL_VALUE_STANDIN = "value"
+
+
+def fill_shell_values(args: "list[str]") -> "list[str]":
+    """These args, typed into a shell, with each value it has yet to fill in (`"$WS"`, `--name=$N`)
+    read as a plain word. An option's name (`--$F`) and the command's own words stay as typed."""
+    filled = []
+    for arg in args:
+        name, eq, _value = arg.partition("=")
+        if _SHELL_EXPANSION_CHARS.isdisjoint(arg):
+            filled.append(arg)
+        elif not arg.startswith("-"):
+            filled.append(_SHELL_VALUE_STANDIN)
+        elif eq and _SHELL_EXPANSION_CHARS.isdisjoint(name) and _GLOB_CHARS.isdisjoint(name):
+            filled.append(name + "=" + _SHELL_VALUE_STANDIN)
+        else:
+            filled.append(arg)
+    return filled if command_words(filled)[:2] == command_words(args)[:2] else list(args)
 
 
 def daemon_profile_deny(args: "list[str]", matched: str, session_id: "str | None" = None) -> str:

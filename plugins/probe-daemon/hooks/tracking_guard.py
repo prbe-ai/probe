@@ -798,7 +798,8 @@ def _asks_help(args: "list[str]") -> bool:
     """`--help` before any `--`, as the CLI's gate reads it: after `--` it is an
     argument (`probe project contributors -- --help` looks up a project). Right
     after a redirection it is a file name (`probe project create x &> --help`).
-    A token search: the CLI's write gate asks click (`write_gate._asks_help`), and it holds.
+    A token search: the CLI's write gate asks click (`write_gate._asks_help`), and it holds
+    wherever that gate judges the same chat and command (`_refuse_off_profile` says where).
     `-h` counts only plainly (`_asks_help_plainly`): as an option's value the command runs."""
     words = args[: args.index("--")] if "--" in args else args
     return any(
@@ -809,9 +810,10 @@ def _asks_help(args: "list[str]") -> bool:
 
 def _asks_help_plainly(args: "list[str]") -> bool:
     """`--help` or `-h` (`is_help_flag`), minus one click hands to the option before
-    it as its value (`probe wizard --folder --help` runs the wizard). The daemon
-    profile's refusals have no CLI backstop -- the write gate refuses only writes --
-    so there a `--help` after a bare option is checked like any other run."""
+    it as its value (`probe wizard --folder --help` runs the wizard). Used where the
+    CLI may not check the same rule on the real argv: the daemon branch (a run's own
+    work skips it) and, in off, wherever `_refuse_off_profile` cannot trust the CLI.
+    There a `--help` after a bare option is checked like any other run."""
     words = args[: args.index("--")] if "--" in args else args
     return any(
         _session_marker.is_help_flag(word, args)
@@ -2609,24 +2611,47 @@ def _deny_daemon_profile(payload: dict, session_id: str) -> None:
 
 def _refuse_off_profile(payload: dict, session_id: str) -> bool:
     """Refuse a `probe` call a daemon-profile chat set `off` keeps reserved
-    (`get_off_profile_refusal`); True when it did."""
+    (`get_off_profile_refusal`); True when it did. Where the CLI checks this same rule on the
+    real argv (`_cli_judges_off`, command words as typed and not `CLI_GATE_LEAVES_TO_HOOK`), any `--help` passes
+    (`_asks_help`) and a value the shell fills in reads as a word (`fill_shell_values`): the CLI
+    knows when `--help` is an option's value, and sees the value. Elsewhere only a plain `--help`
+    passes, and the words are judged as typed."""
     if payload.get("tool_name") != "Bash":
         return False
     tool_input = payload.get("tool_input")
     command = tool_input.get("command") if isinstance(tool_input, dict) else None
-    # A warm hook host may hold an older `_session_marker` without it: fall through to `_deny`.
+    # A warm hook host may hold an older `_session_marker` without these: fall through to `_deny`,
+    # and judge as typed.
     get_off_profile_refusal = getattr(_session_marker, "get_off_profile_refusal", None)
+    left_to_hook = getattr(_session_marker, "CLI_GATE_LEAVES_TO_HOOK", None)
+    fill = getattr(_session_marker, "fill_shell_values", None)
     if not isinstance(command, str) or get_off_profile_refusal is None:
         return False
+    cli_judges = left_to_hook is not None and fill is not None and _cli_judges_off(session_id)
     for args in _probe_invocations(command):
-        if _asks_help_plainly(args):
+        words = _session_marker.command_words(args)[:2]
+        trusted = (cli_judges and " ".join(words) not in left_to_hook
+                   and _SHELL_VALUE_CHARS.isdisjoint("".join(words)))  # `probe "$G" call` may be `mcp call`
+        if (_asks_help if trusted else _asks_help_plainly)(args):
             continue
-        text = get_off_profile_refusal(args, session_id)
+        text = get_off_profile_refusal(fill(args) if trusted else args, session_id)
         if text is not None:
             _save_refusal(payload, args, "chat_not_on")
             _refuse(text)
             return True
     return False
+
+
+#: What makes a typed word one the shell fills in (guards' `_SHELL_EXPANSION_CHARS`).
+_SHELL_VALUE_CHARS = frozenset("$`{")
+
+
+def _cli_judges_off(session_id: str) -> bool:
+    """Does the CLI's write gate judge this chat by the off profile rule too: a stored `off` and
+    the daemon profile mark (`write_gate.refusal`, `_refuse_records`)? Without either it runs
+    what the team's records rule does not name."""
+    return (_session_marker.session_state(session_id) == _session_marker.STATE_OFF
+            and _session_marker.session_profile(session_id) == _session_marker.RECORDER_DAEMON)
 
 
 def _refuse(reason: str) -> None:
