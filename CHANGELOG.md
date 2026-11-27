@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.664.0
+
+- **Your coding agent can manage workspaces while the Probe daemon records the chat.** It can now create, switch, rename and set icons for workspaces itself. Deleting an empty workspace, changing who can write, and limiting this computer to one workspace still wait for your ask (`--directed`).
+
 ## 0.663.0
 
 - **Daemon on Pydantic AI 2.59 and pydantic-ai-harness 0.59.** Clears GHSA-3589-pxp7-3gj8 (harness < 0.59, Dependabot #226). The writer's compaction now writes its rewritten history back to the run, as the new harness expects, so a compacted conversation is not compacted again on the next request. A compaction round's trace line times only the round's model call, not the summary call before it. The new libraries need Python 3.11+: on Python 3.10 the `daemon` extra no longer installs. The background update moves a 3.10 install with daemon mode onto Python 3.13; `probe update` and `probe daemon install` on an install with no recorded Python stop with an error instead. Capture and the SDK still support 3.10.
