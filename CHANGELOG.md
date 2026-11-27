@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.671.0
+
+- **probe-node selftest points at the working install script.** Its host-mode hint used `download.prbe.ai`, which does not resolve; it now names the GitHub release `node.sh`.
+- **Agents can open a saved paper by its id.** `entity(refs=["paper:<id>"])` in the Probe MCP now returns the paper: its summary, abstract and digest (main idea, method, results), each long text capped at 20,000 characters and each digest list at 8 items. A bare paper id opens too, after the other kinds miss. A paper found by search or named on a lineage link carries the `paper:<id>` that opens it, and the reader names saved papers as `paper <title> (id:<id>)`.
+
 ## 0.670.0
 
 - **`--help` after a flag like `--yes` prints help in every chat where the Probe daemon records.** It was refused in `on` and `read` chats (`probe project delete p --yes --help`).
