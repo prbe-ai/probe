@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.669.0
+
+- **A chat where the Probe daemon records, set off, no longer refuses two safe commands.** `--help` after `--yes` prints help again, and a workspace name or folder in a shell variable (`probe workspace use "$WS"`) is checked by the CLI once the shell fills it in.
+
 ## 0.668.0
 
 - **An import's record session answers `probe <command> --help`.** The skills send agents to `--help` for a command's flags; inside the session that records an imported folder, `--help` on a command the session takes now prints the CLI's own help (it said help was not available), and on a command it refuses, the refusal.
