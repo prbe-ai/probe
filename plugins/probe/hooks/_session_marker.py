@@ -2048,6 +2048,10 @@ def daemon_profile_allows(args: "list[str]", session_id: "str | None" = None) ->
         return (needs_directed(args) is None, "probe " + upkeep)
     if head in DAEMON_PROFILE_PLAIN_FLAGS:
         return (_runs_plainly(args, head), "probe " + head)
+    compute, changes = compute_command(args)
+    if compute is not None:
+        # Registering GPUs (compute-any-chat-state): reads and the dry run run; a change with `--directed`.
+        return (not changes or carries_directed(args), "probe " + compute)
     directed = _directed_workspace_change(args)
     if directed is not None:
         return (carries_directed(args), "probe " + directed)
@@ -2184,6 +2188,9 @@ def daemon_profile_deny(args: "list[str]", matched: str, session_id: "str | None
     switch = switch_refusal(args, RESEARCHER_SWITCH_DENY, session_id)
     if switch is not None:
         return switch
+    compute, _changes = compute_command(args)
+    if compute is not None:
+        return COMPUTE_DIRECTED_DENY.format(matched="probe " + compute)  # never `/probe inline`
     key, offender = _check_upkeep(args)
     if key is not None and offender is None and needs_directed(args):
         return needs_directed(args)
@@ -2516,6 +2523,93 @@ def grants_auto(args: "list[str]") -> "str | None":
     return None
 
 
+#: REGISTERING GPUs (compute-any-chat-state): the main agent runs `probe compute` setup in every chat
+#: state and profile, so registering GPUs never waits on `/probe inline`. Reads, and the connect dry
+#: run, run with no flag; what changes the team's machines or their enrollment credentials runs with
+#: `--directed` (the person said yes to it), outside an inline chat. The daemon's own process never
+#: runs any of it: those commands are SETUP in its command rules (`command_rules.OWNERS`).
+COMPUTE_READS = frozenset({"compute nodes", "compute node", "compute clusters", "compute enroll-token list"})
+COMPUTE_CHANGES = frozenset(
+    {"compute connect", "compute disconnect", "compute enroll-token create", "compute enroll-token revoke"})
+#: ...and the change whose `--dry-run`, or no `--target`, only detects targets and prints each plan.
+COMPUTE_DRY_RUNS = frozenset({"compute connect"})
+DRY_RUN_FLAG = "--dry-run"
+COMPUTE_TARGET_FLAG = "--target"
+#: `compute connect`'s own flags that take no value but are not `NO_VALUE_OPTIONS` (one takes a value elsewhere).
+COMPUTE_CONNECT_BARE_FLAGS = frozenset({"--json"})
+
+#: A `COMPUTE_CHANGES` command without `--directed`, outside an inline chat (reason `directed_required`).
+COMPUTE_DIRECTED_DENY = (
+    "`{matched}` changes the team's machines or their enrollment credentials, so it was refused before it ran: "
+    "from an agent it runs only with `--directed`. Ask the person first, saying exactly what it changes; if they "
+    "say yes, run it again with `--directed`, never on your own."
+)
+
+
+def compute_command(args: "list[str]") -> "tuple[str | None, bool]":
+    """`(key, changes)` for `probe compute` setup these args (after `probe`) run: the `COMPUTE_READS` or
+    `COMPUTE_CHANGES` key, and whether it changes anything (a connect with a plain `--dry-run`, or naming no
+    `--target`, does not).
+    `(None, False)` for anything else. A `--dry-run` counts only as a flag click reads as one: before any
+    `--`, not the value of the option before it, and with no word the shell still expands before it."""
+    own = [arg for arg in args if arg != DIRECTED_FLAG]
+    words = command_words(own)
+    for key in (" ".join(words[:3]), " ".join(words[:2])):
+        if key in COMPUTE_READS:
+            return (key, False)
+        if key in COMPUTE_CHANGES:
+            return (key, not (key in COMPUTE_DRY_RUNS and (_plain_dry_run(own) or _names_no_target(own))))
+    return (None, False)
+
+
+def _names_no_target(args: "list[str]") -> bool:
+    """Does this `compute connect` name no target? Then it only detects targets and prints each plan, as
+    `compute clusters` tells the person to run it. Not where a word the shell still expands might be one."""
+    for arg in args:
+        if not _SHELL_EXPANSION_CHARS.isdisjoint(arg) or not _GLOB_CHARS.isdisjoint(arg):
+            return False
+        if arg.split("=", 1)[0] == COMPUTE_TARGET_FLAG:
+            return False
+    return True
+
+
+def _plain_dry_run(args: "list[str]") -> bool:
+    """Do these args carry `--dry-run` as the flag itself (`compute_command`)?"""
+    for at, arg in enumerate(args):
+        if arg == "--":
+            return False
+        if not _SHELL_EXPANSION_CHARS.isdisjoint(arg) or not _GLOB_CHARS.isdisjoint(arg):
+            return False
+        if arg == DRY_RUN_FLAG:
+            before = args[at - 1] if at else ""
+            return (not before.startswith("-") or "=" in before or before in NO_VALUE_OPTIONS
+                    or before in COMPUTE_CONNECT_BARE_FLAGS)
+    return False
+
+
+def _is_agent_recorded(session_id: str, state: str) -> bool:
+    """Is this chat inline: the agent records Probe itself (`on` in the agent profile, `/probe inline`
+    in the daemon profile)?"""
+    if state != STATE_FULL:
+        return False
+    return session_profile(session_id) != RECORDER_DAEMON or is_inline(session_id, state)
+
+
+def compute_refusal(args: "list[str]", session_id: "str | None" = None,
+                    state: "str | None" = None) -> "str | None":
+    """`COMPUTE_DIRECTED_DENY` for a `COMPUTE_CHANGES` command run without `--directed` outside an inline
+    chat, else None: reads and the dry run never, an inline chat keeps running changes with no flag, and a
+    chat with no stored state is not gated (as the CLI's gate leaves it; the daemon profile's guard still
+    asks `--directed` there, `daemon_profile_allows`)."""
+    key, changes = compute_command(args)
+    if key is None or not changes or carries_directed(args) or not session_id:
+        return None
+    state = state if state is not None else session_state(session_id)
+    if state is None or _is_agent_recorded(session_id, state):
+        return None
+    return COMPUTE_DIRECTED_DENY.format(matched="probe " + key)
+
+
 def needs_directed(args: "list[str]") -> "str | None":
     """The refusal for upkeep that runs from an agent only with `--directed` (what records less, or turns
     auto mode on) and was run without it, else None."""
@@ -2689,11 +2783,15 @@ def show_server(url: str) -> str:
 def agent_refusal(args: "list[str]", deny: str = INLINE_SWITCH_DENY,
                   session_id: "str | None" = None) -> "str | None":
     """What every chat state refuses an agent before anything else (T2, T3): its
-    move of this chat's switch (`switch_refusal`; `session_id` for auto), and what
-    records less without `--directed` (`DIRECTED_REQUIRED_DENY`). None when neither applies."""
+    move of this chat's switch (`switch_refusal`; `session_id` for auto), a change to the team's machines
+    outside an inline chat (`compute_refusal`), and what records less without `--directed`
+    (`DIRECTED_REQUIRED_DENY`), each without `--directed`. None when none applies."""
     switch = switch_refusal(args, deny, session_id)
     if switch is not None:
         return switch
+    compute = compute_refusal(args, session_id)
+    if compute is not None:
+        return compute
     return needs_directed(args)
 
 

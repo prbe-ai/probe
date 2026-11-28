@@ -27,11 +27,13 @@ Follow these instead, spelling every command `npx -y probe-research …`:
    is their yes; no pick: say "Nothing changed." and stop.
 4. Each picked Kubernetes target: ask which of its GPU pools are reserved or under a committed-use discount, and
    the hourly price per node; for named pools add `--reserved-pools <pool,...> --reserved-rate <price>`. Each
-   picked target: `compute connect --target <name> --yes --accept-env`. Never pass `--yes` before their pick. On a
+   picked target: `compute connect --target <name> --yes --directed --accept-env`. Never pass `--yes` or `--directed`
+   before their pick. On a
    failure, show its error (connect rolls back by itself).
 5. Check: `compute clusters --json` and `compute nodes --json`.
 
 Never stop or change a running job, never fix a machine by hand, and never print an enrollment token. Never
 uninstall on your own: an owner or admin removes Probe on the dashboard's Compute page. Only if the person asks to
-undo a connect made from this computer: `compute disconnect <name>`, then `compute disconnect <name> --yes` after
-their yes.
+undo a connect made from this computer: `compute disconnect <name> --directed`, then
+`compute disconnect <name> --yes --directed` after their yes. These run in every chat state; never switch the
+chat for them.
