@@ -79,6 +79,12 @@ Create both first, each with a plain title as its name; `run start` never create
 - A project's description comes from its summary's first line.
 - Name the project in each command; `probe project use` is machine-wide.
 
+## Plans
+
+- Save a research plan that has a `Project:` line with `probe plan save` whenever it is written, changed or approved.
+- Starting work for a plan step: pass its stage. `probe plan show` lists them.
+- Progress or a blocker: `probe plan update`. Done only when its `Done when` is met: say how and cite the run or checkpoint.
+
 ## Papers
 
 When the researcher names or links a paper they read, want to try or cite for the ML work, or you read one for it, record it that turn, before you answer, with `probe paper add` on the project it serves (fields: reference §5); there are no research projects. Run `probe paper list` first (no dedupe); amend with `probe paper update`.

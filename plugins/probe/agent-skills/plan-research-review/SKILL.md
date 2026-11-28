@@ -215,7 +215,8 @@ goes through Step 4.
 ONE file, kept consistent: when an answer changes something, edit that section - never append a
 revision. Path: the one the researcher names; in plan mode the host's plan file; else
 `research-plans/<YYYY-MM-DD>-<slug>.md` at the project root. First line `Status: draft`;
-`Status: approved <YYYY-MM-DD>` only once the researcher approves the finished plan. Quoting the
+`Status: approved <YYYY-MM-DD>` only once the researcher approves the finished plan. Second line
+`Project: <Probe project slug>`. Quoting the
 team's Probe history in a public repo: ask before committing it.
 
 1. **Goal** - the question, and the result that answers it (target numbers, source).
@@ -225,8 +226,9 @@ team's Probe history in a public repo: ask before committing it.
 3. **Provenance map** - the Step 2 table.
 4. **Decision ledger** - id, value, source (researcher D<N>, `repo:path:line`, paper §).
 5. **Approved deviations** - reason and approving D-number.
-6. **Steps** - in order, reproduction first where it applies; each with config, seeds, compute,
-   expected cost, and what done looks like.
+6. **Steps** - in order, reproduction first where it applies; each a `###` heading with config,
+   seeds, compute, expected cost, a `Stage: <key>` line (short, lowercase, never changed) and a
+   `Done when:` line.
 7. **Not in scope** - considered and deferred, one line each.
 8. **Open** - anything unanswered. Never silently defaulted.
 9. **Implementation contract** - copy verbatim:

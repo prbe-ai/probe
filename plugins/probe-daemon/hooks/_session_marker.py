@@ -1229,6 +1229,8 @@ WRITE_GROUPS = frozenset(
         "edge",
         # Decisions (decisions PR2): `add` records, `list` reads, `remove` removes.
         "decision",
+        # Plan stages: `save`, `update`, `cite` and `uncite` record; `show` reads.
+        "plan",
         "trial",
         "views",
         "paper",
@@ -1842,6 +1844,8 @@ DAEMON_PROFILE_TABLE_READS = frozenset(
         "views show",
         "project contributors",
         "project code list",
+        # One project's plan stages: the keys an agent passes as a run's stage (plan stages R21).
+        "plan show",
     }
 )
 

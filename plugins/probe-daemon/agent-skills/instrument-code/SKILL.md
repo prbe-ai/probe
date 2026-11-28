@@ -23,6 +23,7 @@ probe.init(project="folding", description="DockQ sweep over sampling temperature
 # older: upgrade it). On another machine pass a slug; the daemon may move the run.
 # `on` state: name the experiment you created too:
 # probe.init(project="folding", experiment="dockq-sweep", question="does a lower sampling temperature improve DockQ?")
+# Work for a plan step: add stage="<key>" (probe plan show lists them).
 probe.log({"loss": 0.42}, step=42)   # ambient: no handle to thread through call frames
 probe.finish()
 ```

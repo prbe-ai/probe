@@ -13,6 +13,7 @@ Lookup only; judgment is in the skill. Each command's flags are in `probe <comma
 | §5 PAPERS | what goes in each paper field |
 | §6 NOTES, §7 READING BACK, §8 PUBLISHING | notes, reads (RL samples too), experiment versions |
 | §9 RECIPES | data processing, provisioning, trials |
+| §10 PLANS | a plan's steps as stages: save, assign, update |
 
 ## 1. ENTITIES
 
@@ -387,3 +388,20 @@ The generated title lands once the run goes terminal, from the span's
 populated `attributes`. A name you set is sticky: generation and the
 producer's retries both leave it alone. Name and description are a trial's
 only authored fields; it has no notes.
+
+## 10. PLANS
+
+A plan file's line 1 is `Status: draft` or `Status: approved <YYYY-MM-DD>`, line 2 `Project: <slug>`;
+each `###` under `## Steps` is a stage with a `Stage: <key>` and a `Done when:` line.
+
+```bash
+probe plan save research-plans/2026-11-27-rl.md        # again after each edit or approval
+probe plan show --project folding                       # keys, status, done-when
+probe exec --project folding --stage training -- python train.py   # or: probe run set <run> --stage training
+probe plan update training --project folding --status complete \
+  --note "reward 0.81 > 0.8 at 20k steps" --evidence run:<run id>
+```
+
+```python
+probe.init(project="folding", experiment="ppo-sweep", question="does PPO reach 0.8?", stage="training")
+```
