@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.680.0
+
+- **probe-node queue reports name a waiting job's machine and say when they were cut.** A Kubernetes pod bound
+  to a node but not started sends that node; a Slurm job that holds nodes sends its hostlist as Slurm writes it.
+  A report too large for the server now drops jobs until it fits and says so, as it does at the 1,000-job cap.
+
 ## 0.679.0
 
 - **The `compute-setup` skill ships to every agent as a normal skill.** Compute is open to every team, so the skill left the gated set: it is in every install profile (Full, the Probe daemon and Runs only) and in the pi package, and no longer waits on the server's per-user answer. On Claude Code the gated copy an older CLI made becomes the normal skill at the next session start (its marker is rewritten, so it is not pruned as gated); elsewhere that copy is pruned at the next sign-in or hourly refresh. The gated-skills mechanism stays for future features.
