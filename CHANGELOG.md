@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.679.0
+
+- **The `compute-setup` skill ships to every agent as a normal skill.** Compute is open to every team, so the skill left the gated set: it is in every install profile (Full, the Probe daemon and Runs only) and in the pi package, and no longer waits on the server's per-user answer. On Claude Code the gated copy an older CLI made becomes the normal skill at the next session start (its marker is rewritten, so it is not pruned as gated); elsewhere that copy is pruned at the next sign-in or hourly refresh. The gated-skills mechanism stays for future features.
+- **`probe compute enroll-token create` makes a one-machine token by default.** It installs one machine, once,
+  within 2 hours; add `--reusable` for pod jobs or many hosts (`--max-nodes`, or `--expires-in` over 2 hours,
+  only with it). The token list shows each token's kind and the node that used it. `probe compute connect` mints
+  an ssh host a one-machine token, and a Kubernetes cluster, container template or SkyPilot server a reusable one
+  that lasts a year instead of 30 days, so new autoscaled nodes keep joining. The SDK's `create_enrollment_token`
+  takes a required `kind=`. probe-node says so in one line when its setup token was already used by another
+  machine.
+- **`probe compute connect`'s dry run says why a cluster is left out, checks ssh hosts, and stays fast.** A
+  kube context whose credential plugin or token fails (an expired `gcloud` login, `doctl` with no token) is now
+  `auth_failed` ("could not sign in", with the plugin's own error and how to sign in again), told apart from
+  `unreachable`. Each ssh host gets one read-only `ssh -o BatchMode=yes <host> nvidia-smi -L` (never a password
+  or passphrase prompt, 5 s connect timeout), so a host that is gone, refuses this computer's key or has no GPU
+  is hidden in the same "Not shown" line (`--all` shows it) instead of offered. Every detector, cluster read and
+  host check runs at once within a 10 s budget, and a timed-out command is killed with the helpers it started
+  (a credential plugin holding the pipe can no longer stall the dry run).
+
 ## 0.678.0
 
 - **Messages from a team supervisor.** The daemon asks for supervisor messages (`X-Probe-Inbox-Kinds: compute,supervisor`) and the agent reads them as `[Probe] Message from <name>, team supervisor (dashboard)`; the agent rules (POINTER_VERSION 72) say to act on one and tell the researcher.
