@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.675.0
+
+- **Plan stages.** `probe plan save` turns a research plan's steps into the project's plan stages; `probe plan show` lists them, and `probe plan update`, `cite` and `uncite` record progress and evidence. Runs and experiments take a stage (`--stage` on `run start`, `exec`, `run set`, `experiment create` and `experiment set`; `stage=` in `probe.init`), and the MCP `entity` tool reads a project's plan (`view="plan"`, and a short block on the project card).
+
 ## 0.674.0
 
 - **Gated skills reach every agent Probe sets up.** When the server's answer names a gated skill, the CLI now copies
