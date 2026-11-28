@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.682.0
+
+`probe plan save` saves the full Markdown for project readers when the server supports it.
+
 ## 0.681.0
 
 - **Registering GPUs works in any Probe chat state, with no switch to inline.** `probe compute clusters|nodes|node`, `compute enroll-token list` and `compute connect --dry-run` (or `compute connect` with no `--target`, which only lists plans) now run from an agent in every chat state (`on`, `read`, `off`, inline) and in both plugin profiles, with no flag. What changes the team's machines or their enrollment credentials (`compute connect --target …`, `compute disconnect`, `compute enroll-token create|revoke`) runs there with `--directed`, once the person said yes; without it, outside an inline chat, the CLI's gate and the plugin's guard answer `directed_required` ("ask the person, then run it again with `--directed`") instead of telling the agent to take the chat inline. Inline chats run them as before, and the Probe daemon's own process still never runs any of them. The `compute-setup` skill spells the changes with `--directed`.
