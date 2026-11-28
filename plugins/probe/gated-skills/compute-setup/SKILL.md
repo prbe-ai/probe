@@ -20,11 +20,15 @@ Follow these instead, spelling every command `npx -y probe-research …`:
    one of them to run it." and stop.
 2. `compute clusters --json`: if it answers `NOT_ENABLED`, say "Probe compute is not turned on for your
    account yet." and stop.
-3. `compute connect --dry-run --json --accept-env`. Tell the person in plain words what each target is and what
-   connecting it changes, then ask which to register (question tool, multi-select). Their pick is their yes; no
-   pick: say "Nothing changed." and stop.
-4. Each picked target: `compute connect --target <name> --yes --accept-env`. Never pass `--yes` before their
-   pick. On a failure, show its error (connect rolls back by itself).
+3. `compute connect --dry-run --json --accept-env` (add `--offer-queue` only if the person asks for a job queue).
+   Nothing in `plans`: say "I found no GPU clusters or machines from this computer." and its `hidden_summary`.
+   Tell the person in plain words what each target is (a cluster's GPU nodes, accelerator and pools: its plan's
+   `cluster`) and what connecting it changes, then ask which to register (question tool, multi-select). Their pick
+   is their yes; no pick: say "Nothing changed." and stop.
+4. Each picked Kubernetes target: ask which of its GPU pools are reserved or under a committed-use discount, and
+   the hourly price per node; for named pools add `--reserved-pools <pool,...> --reserved-rate <price>`. Each
+   picked target: `compute connect --target <name> --yes --accept-env`. Never pass `--yes` before their pick. On a
+   failure, show its error (connect rolls back by itself).
 5. Check: `compute clusters --json` and `compute nodes --json`.
 
 Never stop or change a running job, never fix a machine by hand, and never print an enrollment token. Never
