@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.673.0
+
+- **The `compute-setup` skill points at the GPU registration page.** Its full steps, the same for every coding agent, are now https://research.prbe.ai/register-gpus.md, which the skill reads and follows; it runs `probe compute disconnect` only when you ask it to undo a connect made from your computer.
+
 ## 0.672.0
 
 - **Run trace evidence.** The SDK can stage a scrubbed trace document for a new sample, publish verified documents onto existing samples, read a pinned revision, and restore an earlier revision.
