@@ -1,40 +1,33 @@
 ---
 name: compute-setup
-description: Connects a team's GPU machines or cluster to Probe with `probe compute connect`, so Probe sees each machine, its GPUs and its jobs. Use when someone asks to track, monitor or connect their GPUs, cluster, Kubernetes, SLURM, SSH hosts or cloud machines to Probe, or asks Probe for a job queue.
+description: Registers a team's GPUs with Probe so it sees each machine, its GPUs and its jobs. Use when someone asks to register, track, monitor or connect their GPUs, cluster, Kubernetes, SLURM, SSH hosts or cloud machines to Probe.
 ---
 # Compute setup
 
-`probe compute connect` finds where this team's GPU work runs and installs probe-node there (it
-reports each machine's GPUs and jobs to Probe). It changes nothing until the person says yes.
+The steps, the same for every coding agent, are one page. Read it raw and follow it, start to end:
 
-The full steps, the same for every coding agent, are https://research.prbe.ai/register-gpus.md: read
-it raw (`curl -fsSL https://research.prbe.ai/register-gpus.md`) and follow it; this skill is its summary.
+```sh
+curl -fsSL https://research.prbe.ai/register-gpus.md
+```
 
-Only a team owner or admin can register GPUs: if `probe whoami` shows another `role`, tell the
-person to ask an owner or admin, and stop.
+A web-fetch tool's summary is not the page: use curl's output.
 
-1. Dry-run it first (`--dry-run`): it shows what it finds and the exact change for each target. Each target shows how it would be connected:
-   - **Kubernetes**: probe-node as a DaemonSet (Helm), one pod per node.
-   - **SSH host**: probe-node installed on the host.
-   - **Pod mode** (Modal, Daytona and other container sandboxes): a wrapper that starts the job
-     with probe-node beside it. It ends with the job, so Probe cannot tell when that machine sits idle.
-   - **`skypilot@<cluster>`**: offered only to a team with no job queue (no SLURM, no SkyPilot
-     server). It installs a SkyPilot API server with Probe's policy into the team's Kubernetes or onto
-     one VM; then `sky jobs launch --env PROBE_PROJECT=<project>` opens a Probe run for each job. A team
-     with its own queue keeps it.
-2. Tell the person, in plain words, which targets it found and what each change does. Ask which
-   ones to connect, and wait for a clear yes to that plan.
-3. Connect only the targets they said yes to, each by `--target <name>`. `--yes` stands for the person's yes, so never pass it
-   before they gave one. If it asks for a browser approval, tell the person to approve it. A failed step is rolled back; show them the error.
-   If the cluster access is read-only or refused, say what is missing: rights to install cluster-wide
-   (a namespace, a Secret, a DaemonSet and cluster roles; in practice cluster-admin). Someone who has them runs connect.
-4. Check: `probe compute clusters` lists the cluster, and `probe compute nodes` lists each machine
-   once it reports.
+## Offline: the page could not be read
 
-If something looks wrong, stop and tell the person what you saw. Never fix it by hand: no commands
-inside system pods, no relay or key of your own, no changes to the installed release.
+Follow these instead, spelling every command `npx -y probe-research …`:
 
-Never uninstall on your own. An admin removes Probe from a cluster on the dashboard: tell the person
-that. Run `probe compute disconnect` only when the person asks you to undo a connect made from this
-computer, and never `helm uninstall` or any delete yourself. Never print or paste
-an enrollment token; connect gets its own. Options: `probe compute connect --help`.
+1. `whoami`: if its `role` is not `owner` or `admin`, say "Registering GPUs needs a team owner or admin; ask
+   one of them to run it." and stop.
+2. `compute clusters --json`: if it answers `NOT_ENABLED`, say "Probe compute is not turned on for your
+   account yet." and stop.
+3. `compute connect --dry-run --json --accept-env`. Tell the person in plain words what each target is and what
+   connecting it changes, then ask which to register (question tool, multi-select). Their pick is their yes; no
+   pick: say "Nothing changed." and stop.
+4. Each picked target: `compute connect --target <name> --yes --accept-env`. Never pass `--yes` before their
+   pick. On a failure, show its error (connect rolls back by itself).
+5. Check: `compute clusters --json` and `compute nodes --json`.
+
+Never stop or change a running job, never fix a machine by hand, and never print an enrollment token. Never
+uninstall on your own: an owner or admin removes Probe on the dashboard's Compute page. Only if the person asks to
+undo a connect made from this computer: `compute disconnect <name>`, then `compute disconnect <name> --yes` after
+their yes.

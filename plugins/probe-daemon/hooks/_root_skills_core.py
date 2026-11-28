@@ -32,10 +32,10 @@ GATED SKILLS (A24, compute-backend-gaps T14) sit in the plugin's `gated-skills/`
 names, so no agent reads them from the plugin. One is copied only when the server's per-user
 answer, kept on disk (`get_gated_cache_path`), names it; no answer, an unreadable or stale one, or a skill
 it leaves out means the skill is absent, and a copy of ours already there is pruned. Claude Code gets it
-with its root skills (`apply`); Codex, which reads the rest from the plugin by manifest, gets ONLY the gated
-copies in its own `skills/` (`apply_gated`), each marked gated so nothing else of ours there is touched. The CLI
-also runs `apply_gated` on both folders each time it keeps an answer (`gated_skills.apply_gated_copies`): a
-sign-in during a chat starts no session.
+with its root skills (`apply`); Codex, pi, Kimi Code and Cursor, which read the rest from the plugin or package
+by manifest, get ONLY the gated copies in their own `skills/` (`apply_gated`), each marked gated so nothing else
+of ours there is touched. The CLI also runs `apply_gated` on every agent's folder each time it keeps an answer
+(`gated_skills.apply_gated_copies`): a sign-in during a chat starts no session, and pi runs no Python hook.
 
 WE NEVER TOUCH A FOLDER WE CANNOT PROVE IS OURS. `probe`, `track-work` and
 `edit-notes` are generic names in a namespace someone else may already use
