@@ -7,6 +7,9 @@ description: Connects a team's GPU machines or cluster to Probe with `probe comp
 `probe compute connect` finds where this team's GPU work runs and installs probe-node there (it
 reports each machine's GPUs and jobs to Probe). It changes nothing until the person says yes.
 
+The full steps, the same for every coding agent, are https://research.prbe.ai/register-gpus.md: read
+it raw (`curl -fsSL https://research.prbe.ai/register-gpus.md`) and follow it; this skill is its summary.
+
 Only a team owner or admin can register GPUs: if `probe whoami` shows another `role`, tell the
 person to ask an owner or admin, and stop.
 
@@ -31,6 +34,7 @@ person to ask an owner or admin, and stop.
 If something looks wrong, stop and tell the person what you saw. Never fix it by hand: no commands
 inside system pods, no relay or key of your own, no changes to the installed release.
 
-Never uninstall. An admin removes Probe from a cluster on the dashboard: tell the person that, and
-never run `probe compute disconnect`, `helm uninstall` or any delete yourself. Never print or paste
+Never uninstall on your own. An admin removes Probe from a cluster on the dashboard: tell the person
+that. Run `probe compute disconnect` only when the person asks you to undo a connect made from this
+computer, and never `helm uninstall` or any delete yourself. Never print or paste
 an enrollment token; connect gets its own. Options: `probe compute connect --help`.
