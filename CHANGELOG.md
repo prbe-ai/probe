@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.676.0
+
+- **`probe exec --venv PATH` names the environment the command runs in.** It is recorded as the run's environment; without it `probe exec` still detects one (`.venv`/`venv`/`env` in the project, then `$VIRTUAL_ENV`, then `$CONDA_PREFIX`). The "environment NOT captured" warning already recommended this flag, which `probe exec` did not have until now.
+- **`probe exec` refuses an option it does not have before opening a run.** A mistyped or unsupported flag used to open a run and then try to execute the flag as the command; it now fails at once with a pointer to `probe exec --help`.
+- **Reserved node pools in `probe compute connect`.** `--reserved-pools POOL,... --reserved-rate USD` keeps the
+  `probe-node` release off those pools (on a cluster already connected, an upgrade that changes only its affinity)
+  and installs `probe-node-reserved` on them, labelled `capacity=owned, pricing=reserved, hourly_rate_usd`;
+  `disconnect` removes both. Nodes that already reported re-enroll at the reserved price on their own (probe-node
+  re-enrolls when its labels change).
+- **The dry run shows only clusters with GPUs.** Connect reads each kube context's nodes (5 s, in parallel) and
+  shows its GPU nodes, accelerator, machine type and pools; clusters that do not answer or have no GPU node are one
+  `Not shown:` line (`--all` includes them; `--json` carries `reachable`, `gpu_nodes`, `pools`, `hidden_reason`
+  and `hidden_summary`). A SkyPilot queue (`skypilot@<cluster>`) is offered only with `--offer-queue`.
+
 ## 0.675.0
 
 - **Plan stages.** `probe plan save` turns a research plan's steps into the project's plan stages; `probe plan show` lists them, and `probe plan update`, `cite` and `uncite` record progress and evidence. Runs and experiments take a stage (`--stage` on `run start`, `exec`, `run set`, `experiment create` and `experiment set`; `stage=` in `probe.init`), and the MCP `entity` tool reads a project's plan (`view="plan"`, and a short block on the project card).
