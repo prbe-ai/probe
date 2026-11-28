@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.674.0
+
+- **Gated skills reach every agent Probe sets up.** When the server's answer names a gated skill, the CLI now copies
+  it into pi's (`~/.pi/agent/skills`), Kimi Code's (`~/.kimi-code/skills`) and Cursor's (`~/.cursor/skills`) own
+  skills folders as well as Claude Code's and Codex's, at sign-in, on the hourly refresh and after `probe update`, and
+  prunes only its own marked copy when the answer drops it. Uninstall removes those copies too.
+- **`compute-setup` is a short trigger for register-gpus.md.** The skill fetches
+  https://research.prbe.ai/register-gpus.md and follows it, with a minimal offline fallback (dry run, the person's
+  pick, `connect --target --yes`, check; never uninstall).
+- **Gated skills stay out of an agent Probe was removed from, follow a context switch, and refresh on every update.**
+  Removing Probe from one agent marks it so a later refresh never copies `compute-setup` back (reinstalling clears
+  the mark); `probe context use` / deleting the active context re-asks for the new sign-in, or prunes every copy when
+  the context has none; and every `probe update` path, including one run from pi, re-copies the skill from the new
+  release. The skill's offline fallback also keeps register-gpus.md's disconnect-on-request step.
+
 ## 0.673.0
 
 - **The `compute-setup` skill points at the GPU registration page.** Its full steps, the same for every coding agent, are now https://research.prbe.ai/register-gpus.md, which the skill reads and follows; it runs `probe compute disconnect` only when you ask it to undo a connect made from your computer.
