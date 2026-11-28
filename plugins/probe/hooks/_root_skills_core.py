@@ -115,8 +115,13 @@ def _same(src: Path, dst: Path) -> bool:
     Compares the file list and the bytes. The session-start hook runs this on
     every start, and rewriting a folder a session may be reading from is both
     pointless and a way to hand a half-written SKILL.md to a live agent.
+
+    The marker's kind counts too: a gated copy of a skill that has since left the gated set (an older CLI's
+    `compute-setup`) holds the same bytes, but kept as is, `apply_gated` would prune it as gated. Rewritten, its
+    marker says what it is now.
     """
-    return is_ours(dst) and _content_matches(src, dst)
+    is_gated_source = src.parent.name == GATED_SKILLS_DIR
+    return is_ours(dst) and is_gated_copy(dst) == is_gated_source and _content_matches(src, dst)
 
 
 def is_current(src: Path, dst: Path) -> bool:

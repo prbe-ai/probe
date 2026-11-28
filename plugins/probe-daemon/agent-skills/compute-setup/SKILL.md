@@ -18,8 +18,8 @@ Follow these instead, spelling every command `npx -y probe-research …`:
 
 1. `whoami`: if its `role` is not `owner` or `admin`, say "Registering GPUs needs a team owner or admin; ask
    one of them to run it." and stop.
-2. `compute clusters --json`: if it answers `NOT_ENABLED`, say "Probe compute is not turned on for your
-   account yet." and stop.
+2. `compute clusters --json`: Probe compute is on for every team; only an older server answers `NOT_ENABLED`,
+   and then say "Probe compute is not turned on for your account yet." and stop.
 3. `compute connect --dry-run --json --accept-env` (add `--offer-queue` only if the person asks for a job queue).
    Nothing in `plans`: say "I found no GPU clusters or machines from this computer." and its `hidden_summary`.
    Tell the person in plain words what each target is (a cluster's GPU nodes, accelerator and pools: its plan's

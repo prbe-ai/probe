@@ -27,7 +27,8 @@
       "plugins/probe-research-pi/skills/artifact-design",
       "plugins/probe-research-pi/skills/write-pane",
       "plugins/probe-research-pi/skills/write-preview",
-      "plugins/probe-research-pi/skills/manage-probe"
+      "plugins/probe-research-pi/skills/manage-probe",
+      "plugins/probe-research-pi/skills/compute-setup"
     ],
     "mcp": "./plugins/probe-research-pi/mcp.json"
   },

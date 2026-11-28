@@ -79,6 +79,8 @@ const EXPECTED_SKILLS = [
   "write-preview",
   // install-one-go D21: manage Probe by asking.
   "manage-probe",
+  // Compute for every team (11-27): connect a team's GPU machines or cluster.
+  "compute-setup",
 ].sort();
 
 let scratchHome: string;

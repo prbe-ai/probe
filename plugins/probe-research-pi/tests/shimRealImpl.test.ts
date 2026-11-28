@@ -176,6 +176,7 @@ describe("two roots: identity from installRoot, files from resourceRoot (O8)", (
       join(PACKAGE_ROOT, "skills", "plan-research-review"),
       join(PACKAGE_ROOT, "skills", "write-pane"),
       join(PACKAGE_ROOT, "skills", "manage-probe"),
+      join(PACKAGE_ROOT, "skills", "compute-setup"),
     ]);
   });
 

@@ -28,7 +28,7 @@ import { join } from "node:path";
 import { DAEMON_REASON_WORDS, DaemonReason, DaemonStatus, type DaemonStatusValue } from "./core/daemonNotice.js";
 import { TOOL_NAME_PREFIX } from "./mcpSchema.js";
 
-/** The skills a daemon-profile prompt keeps of this package's: the lean plugin's five. */
+/** The skills a daemon-profile prompt keeps of this package's: the lean plugin's seven. */
 export const DAEMON_PROFILE_SKILLS: ReadonlySet<string> = new Set([
   "instrument-code",
   "probe",
@@ -38,6 +38,8 @@ export const DAEMON_PROFILE_SKILLS: ReadonlySet<string> = new Set([
   "write-pane",
   // Fix, update, settings, past work, account or uninstall, by asking (install-one-go D21).
   "manage-probe",
+  // Connect a team's GPU machines or cluster (compute for every team, 11-27).
+  "compute-setup",
 ]);
 
 /**
@@ -71,6 +73,8 @@ export const PACKAGE_SKILLS: ReadonlySet<string> = new Set([
   "write-preview",
   // Fix, update, settings, past work, account or uninstall, by asking (install-one-go D21).
   "manage-probe",
+  // Connect a team's GPU machines or cluster (compute for every team, 11-27).
+  "compute-setup",
 ]);
 
 /** Where the daemon's own skills live inside this package. Never named in package.json. */
@@ -98,7 +102,7 @@ export function daemonSkillDir(extensionDir: string, name: string): string {
  * of a name, so where a filter or a project entry already loaded one, this
  * path is a no-op.
  */
-export const DAEMON_ADDED_SKILLS: readonly string[] = ["plan-research-review", "write-pane", "manage-probe"];
+export const DAEMON_ADDED_SKILLS: readonly string[] = ["plan-research-review", "write-pane", "manage-probe", "compute-setup"];
 
 /** Every skill path `resources_discover` adds in the daemon profile. */
 export function daemonSkillPaths(extensionDir: string): string[] {

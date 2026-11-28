@@ -27,7 +27,8 @@
       "skills/artifact-design",
       "skills/write-pane",
       "skills/write-preview",
-      "skills/manage-probe"
+      "skills/manage-probe",
+      "skills/compute-setup"
     ],
     "mcp": "./mcp.json"
   },
