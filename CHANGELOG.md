@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.677.0
+
+- **The pod startup line is safe on VMs.** `npx -y probe-research node pod` (and `node.sh pod`) now runs a
+  probe-node that checks whether it is in a container. On a VM or bare-metal machine it stands down when a host
+  probe-node already reports the machine (a wrapped job runs exactly as without Probe; the background form
+  `PROBE_NODE_EXIT_WITH_JOB=0 ... -- sleep infinity &` exits 0), and otherwise takes the host lock and reports the
+  machine as a host node under its own instance id instead of `POD_UID`. Inside containers nothing changes.
+  `PROBE_NODE_IN_CONTAINER=1|0` overrides the check.
+
 ## 0.676.0
 
 - **`probe exec --venv PATH` names the environment the command runs in.** It is recorded as the run's environment; without it `probe exec` still detects one (`.venv`/`venv`/`env` in the project, then `$VIRTUAL_ENV`, then `$CONDA_PREFIX`). The "environment NOT captured" warning already recommended this flag, which `probe exec` did not have until now.
