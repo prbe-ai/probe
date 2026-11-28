@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.678.0
+
+- **Messages from a team supervisor.** The daemon asks for supervisor messages (`X-Probe-Inbox-Kinds: compute,supervisor`) and the agent reads them as `[Probe] Message from <name>, team supervisor (dashboard)`; the agent rules (POINTER_VERSION 72) say to act on one and tell the researcher.
+- The generated latest metrics request accepts `key_contains` to select metric names by literal substring.
+- **`probe plan save` takes at most 6 steps.** `plan-research-review` writes at most 6, and a longer file names the line to cut.
+
 ## 0.677.0
 
 - **The pod startup line is safe on VMs.** `npx -y probe-research node pod` (and `node.sh pod`) now runs a
